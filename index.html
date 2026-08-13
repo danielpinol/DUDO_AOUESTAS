@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es-GT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dudo — Control de apuestas</title>
+<meta name="theme-color" content="#0d2a21">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<div class="envoltura">
+  <header>
+    <div>
+      <h1 class="titulo">Dudo 
+      <p class="subtitulo">Control de mesa</p>
+    </div>
+    <div class="dados" id="dados"></div>
+  </header>
+
+  <div class="barra">
+    <button class="btn btn-oro" onclick="agregarJugador()">+ Agregar jugador</button>
+    <button class="btn" onclick="abrirMontoGeneral()">Monto de la apuesta</button>
+    <button class="btn btn-fantasma" onclick="nuevaMesa()">Nueva mesa</button>
+  </div>
+
+  <div class="marco">
+    <div class="scroll" id="contenedorTabla"></div>
+  </div>
+</div>
+
+<div class="pie">
+  <div class="pie-interno">
+    <div class="resumen-pie" id="resumenPie"></div>
+    <button class="btn-finalizar" id="btnFinalizar" onclick="abrirFinalizar()">Partido finalizado</button>
+  </div>
+</div>
+
+<!-- Modal: monto de la apuesta -->
+<div class="velo" id="modalMonto" hidden>
+  <div class="tarjeta">
+    <h2>Monto de la apuesta</h2>
+    <p class="ayuda">Todos apuestan lo mismo. Se le pone a cada quien en los partidos que siguen abiertos, menos las casillas que ya editaste a mano por una multa.</p>
+    <div class="bloque">
+      <label for="entradaMonto">Quetzales por jugador, por partido</label>
+      <input class="campo" type="number" id="entradaMonto" inputmode="decimal" min="0" step="1" placeholder="20">
+    </div>
+    <div class="acciones">
+      <button class="btn btn-fantasma" onclick="cerrar('modalMonto')">Cancelar</button>
+      <button class="btn btn-oro" onclick="aplicarMontoGeneral()">Confirmar</button>
+    </div>
+    <p class="error" id="errorMonto"></p>
+  </div>
+</div>
+
+<!-- Modal: cerrar el partido en juego -->
+<div class="velo" id="modalFinal" hidden>
+  <div class="tarjeta">
+    <h2 id="tituloFinal">Partido</h2>
+    
+
+    <div class="bloque">
+      <label>1 · ¿Quién ganó?</label>
+      <select class="campo" id="ganador1" style="margin-bottom:9px"></select>
+      <select class="campo" id="ganador2"></select>
+    </div>
+
+    <div class="bloque">
+      <label>2 · ¿Perdió Doble?</label>
+      <div class="chips" id="chipsUnaFicha"></div>
+      <p class="nota">Apuesta se multiplica ×2. Al que ganó lo vas a ver tachado.</p>
+    </div>
+
+    <div class="bloque">
+      <label>3 · ¿ Ganó Virgo?</label>
+      <label class="interruptor" id="envolturaTres">
+        <input type="checkbox" id="tresFichas">
+        <span class="txt">Ganó con 3 fichas 
+          <small>Se multiplica ×2 la apuesta de todos.</small>
+        </span>
+      </label>
+    </div>
+
+    <div class="acciones">
+      <button class="btn btn-fantasma" onclick="cerrar('modalFinal')">Cancelar</button>
+      <button class="btn btn-oro" onclick="calcularCierre()">Confirmar</button>
+    </div>
+    <p class="error" id="errorFinal"></p>
+  </div>
+</div>
+
+<!-- Modal: confirmar (propio, porque confirm() del navegador viene bloqueado en visores) -->
+<div class="velo" id="modalConfirmar" hidden>
+  <div class="tarjeta" style="max-width:400px">
+    <h2 id="tituloConfirmar"></h2>
+    <p class="ayuda" id="textoConfirmar"></p>
+    <div class="acciones">
+      <button class="btn btn-fantasma" onclick="cerrar('modalConfirmar')">Cancelar</button>
+      <button class="btn btn-oro" id="btnConfirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="aviso" id="aviso" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

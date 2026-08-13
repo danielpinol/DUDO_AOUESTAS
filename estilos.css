@@ -1,0 +1,466 @@
+/* ====== Paleta y variables ====== */
+:root{
+  --fieltro:#0d2a21;
+  --fieltro-alto:#144033;
+  --fieltro-borde:#1e5643;
+  --hueso:#f2ece0;
+  --hueso-tenue:#a9b5ad;
+  --oro:#e0a63c;
+  --oro-suave:#f0c877;
+  --rojo:#e4674a;
+  --menta:#68d29b;
+  --radio:10px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+body{
+  font-family:'Instrument Sans',system-ui,sans-serif;
+  background:var(--fieltro);
+  background-image:
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(224,166,60,.13), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 100% 110%, rgba(30,86,67,.6), transparent 70%);
+  background-attachment:fixed;
+  color:var(--hueso);
+  min-height:100dvh;
+  padding:0 0 138px;
+  -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+}
+
+/* textura de grano sutil */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.envoltura{
+  position:relative;z-index:1;max-width:1240px;margin:0 auto;
+  padding-left:max(14px, env(safe-area-inset-left));
+  padding-right:max(14px, env(safe-area-inset-right));
+}
+
+/* ====== Encabezado ====== */
+header{
+  padding:26px 0 18px;
+  border-bottom:1px solid var(--fieltro-borde);
+  margin-bottom:18px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+.titulo{
+  font-family:'Anton',Impact,sans-serif;
+  font-size:clamp(30px,7vw,46px);
+  letter-spacing:.02em;line-height:.92;text-transform:uppercase;
+}
+.titulo span{color:var(--oro)}
+.subtitulo{
+  font-size:12.5px;color:var(--hueso-tenue);margin-top:7px;
+  letter-spacing:.07em;text-transform:uppercase;
+}
+.dados{display:flex;gap:5px;padding-bottom:6px}
+.dado{
+  width:26px;height:26px;border-radius:6px;background:var(--hueso);
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:3.5px;gap:1px;box-shadow:0 3px 0 rgba(0,0,0,.35);
+  transform:rotate(-6deg);
+}
+.dado:nth-child(2){transform:rotate(5deg) translateY(-2px)}
+.dado:nth-child(3){transform:rotate(-2deg)}
+.pip{width:100%;height:100%;border-radius:50%;background:var(--fieltro)}
+.pip.off{background:transparent}
+
+/* ====== Barra de controles ====== */
+.barra{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+
+button{font-family:inherit;cursor:pointer;border:none;transition:transform .12s ease, background .15s ease, box-shadow .15s ease}
+button:active{transform:translateY(1px) scale(.985)}
+
+.btn{
+  background:var(--fieltro-alto);color:var(--hueso);
+  border:1px solid var(--fieltro-borde);
+  padding:10px 15px;border-radius:var(--radio);
+  font-size:14px;font-weight:600;letter-spacing:.01em;
+  min-height:42px;
+}
+.btn:hover{background:#19503f;border-color:#2a7059}
+.btn-oro{background:var(--oro);color:#20180a;border-color:var(--oro)}
+.btn-oro:hover{background:var(--oro-suave);border-color:var(--oro-suave)}
+.btn-fantasma{background:transparent;color:var(--hueso-tenue)}
+.btn-fantasma:hover{color:var(--hueso);background:rgba(255,255,255,.05)}
+
+/* ====== Tabla ====== */
+.marco{
+  border:1px solid var(--fieltro-borde);
+  border-radius:14px;overflow:hidden;
+  background:rgba(0,0,0,.16);
+}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content}
+
+th,td{
+  padding:0;text-align:center;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  border-right:1px solid rgba(255,255,255,.06);
+  white-space:nowrap;
+}
+thead th{
+  background:#0a2019;
+  font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--hueso-tenue);
+  padding:11px 12px;position:sticky;top:0;z-index:3;
+}
+thead th.col-nombre{left:0;z-index:5;text-align:left}
+thead th.col-apuesta{color:var(--oro)}
+thead th.col-total{color:var(--oro)}
+
+td.col-nombre,th.col-nombre{
+  position:sticky;left:0;z-index:2;
+  background:#0f2e25;text-align:left;
+  min-width:150px;max-width:190px;
+}
+tbody tr:nth-child(even) td.col-nombre{background:#113328}
+
+.celda-nombre{display:flex;align-items:center;gap:8px;padding:0 8px 0 12px}
+.ficha-num{
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+  color:var(--hueso-tenue);width:15px;flex:none;
+}
+input.nombre{
+  background:transparent;border:none;color:var(--hueso);
+  font-family:inherit;font-size:14.5px;font-weight:600;
+  padding:13px 0;width:100%;min-width:0;outline:none;
+}
+input.nombre:focus{color:var(--oro-suave)}
+
+input.monto{
+  background:transparent;border:none;color:var(--hueso);
+  font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;
+  padding:13px 6px;width:78px;text-align:center;outline:none;
+}
+input.monto:focus{background:rgba(224,166,60,.13);color:var(--oro-suave)}
+input.monto.editado{color:var(--oro);font-weight:600}
+input.monto.apuesta{background:rgba(224,166,60,.06)}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+
+td.total{
+  font-family:'IBM Plex Mono',monospace;font-size:15.5px;font-weight:600;
+  color:var(--oro);padding:0 14px;
+  background:rgba(224,166,60,.09);
+  border-left:1px solid rgba(224,166,60,.3);
+}
+td.total.mas{color:var(--menta)}
+td.total.menos{color:var(--rojo)}
+td.total.cero{color:var(--hueso-tenue)}
+td.quitar{padding:0;width:1%;background:rgba(0,0,0,.14)}
+td.quitar .btn-x{display:block;width:100%;height:100%;border-radius:0}
+.btn-x{
+  background:transparent;color:#5f7168;font-size:17px;line-height:1;
+  padding:6px 9px;border-radius:6px;
+}
+.btn-x:hover{color:var(--rojo);background:rgba(228,103,74,.12)}
+
+th .encabezado-partido{display:flex;align-items:center;justify-content:center;gap:5px}
+th .btn-x{font-size:13px;padding:2px 5px}
+
+/* Estado de cada partido: en juego (dorado) o ya cerrado (apagado) */
+.estado-partido{
+  display:block;margin-top:3px;
+  font-size:8.5px;letter-spacing:.16em;font-weight:700;
+}
+thead th.es-abierto{color:var(--oro);background:#0c2b21}
+thead th.es-abierto .estado-partido{color:var(--oro)}
+thead th.es-cerrado .estado-partido{color:#5f7168}
+
+/* Botón chiquito para reabrir un partido cerrado */
+.btn-reabrir{
+  background:transparent;color:#5f7168;
+  font-size:14px;line-height:1;padding:3px 6px;border-radius:6px;
+}
+.btn-reabrir:hover{color:var(--oro);background:rgba(224,166,60,.14)}
+
+/* Casilla de un partido cerrado: solo lectura, el neto en verde o rojo */
+td.cerrada{background:rgba(0,0,0,.14)}
+.neto{
+  display:block;font-family:'IBM Plex Mono',monospace;
+  font-size:14px;font-weight:600;padding:13px 6px;min-width:78px;
+}
+.neto.mas{color:var(--menta)}
+.neto.menos{color:var(--rojo)}
+.neto.cero{color:var(--hueso-tenue)}
+.neto.fuera{color:#3f4f47}
+
+/* ====== Animación del cierre ======
+   Corre una sola vez, al cerrar el partido. El destello arranca y termina
+   en el color normal de la casilla, para que no pegue un salto al empezar. */
+@keyframes destello{
+  0%  {background:rgba(0,0,0,.14)}
+  35% {background:rgba(224,166,60,.38)}
+  100%{background:rgba(0,0,0,.14)}
+}
+td.cerrada.recien{animation:destello .5s ease both}
+
+/* el total del que ganó pulsa una vez, después del destello */
+@keyframes pulso-oro{
+  0%,100%{box-shadow:inset 0 0 0 0 rgba(224,166,60,0); background:rgba(224,166,60,.09)}
+  45%    {box-shadow:inset 0 0 0 2px var(--oro);       background:rgba(224,166,60,.3)}
+}
+td.total.gano{animation:pulso-oro .6s ease .3s both}
+
+tfoot td{
+  background:#0a2019;font-family:'IBM Plex Mono',monospace;
+  font-size:13px;font-weight:600;padding:11px 12px;color:var(--hueso-tenue);
+}
+tfoot td.col-nombre{
+  background:#0a2019;font-family:'Instrument Sans',sans-serif;
+  font-size:11px;letter-spacing:.13em;text-transform:uppercase;padding-left:12px;
+}
+tfoot td.gran-total{color:var(--oro);font-size:15px}
+tfoot td.cuadra{color:#4f6459}
+tfoot td.descuadra{color:var(--rojo);background:rgba(228,103,74,.16)}
+tfoot td.en-juego{color:var(--hueso-tenue)}
+
+/* ====== Vacío ====== */
+.vacio{padding:52px 22px;text-align:center;color:var(--hueso-tenue)}
+.vacio h3{font-family:'Anton',sans-serif;font-size:21px;color:var(--hueso);letter-spacing:.02em;margin-bottom:7px;text-transform:uppercase}
+.vacio p{font-size:14px;max-width:290px;margin:0 auto}
+
+/* ====== Pie fijo ====== */
+.pie{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:linear-gradient(to top,#071a14 62%,rgba(7,26,20,.86) 100%);
+  border-top:1px solid var(--fieltro-borde);
+  padding:13px 14px calc(13px + env(safe-area-inset-bottom));
+  backdrop-filter:blur(8px);
+}
+.pie-interno{max-width:1240px;margin:0 auto;display:flex;gap:11px;align-items:center;justify-content:space-between}
+.resumen-pie{font-size:12px;color:var(--hueso-tenue);line-height:1.45}
+.resumen-pie b{color:var(--hueso);font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600}
+.btn-finalizar{
+  background:var(--oro);color:#20180a;
+  font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.05em;text-transform:uppercase;
+  padding:13px 22px;border-radius:var(--radio);flex:none;
+  box-shadow:0 4px 0 #9d6f1c;
+}
+.btn-finalizar:hover{background:var(--oro-suave)}
+.btn-finalizar:active{box-shadow:0 1px 0 #9d6f1c}
+.btn-finalizar:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+
+/* ====== Modales ====== */
+.velo{
+  position:fixed;inset:0;z-index:50;background:rgba(3,12,9,.78);
+  backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;
+  padding:16px;overflow-y:auto;
+}
+@media(min-width:640px){.velo{align-items:center}}
+.velo[hidden]{display:none}
+.tarjeta{
+  background:#103127;border:1px solid var(--fieltro-borde);
+  border-radius:16px;width:100%;max-width:520px;
+  padding:22px;margin:auto 0;
+  max-height:calc(100dvh - 32px);overflow-y:auto;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  box-shadow:0 22px 60px rgba(0,0,0,.55);
+  animation:sube .26s cubic-bezier(.22,1,.36,1);
+}
+@keyframes sube{from{opacity:0;transform:translateY(22px) scale(.98)}to{opacity:1;transform:none}}
+.tarjeta h2{
+  font-family:'Anton',sans-serif;font-size:23px;text-transform:uppercase;
+  letter-spacing:.02em;margin-bottom:5px;
+}
+.tarjeta .ayuda{font-size:13.5px;color:var(--hueso-tenue);line-height:1.5;margin-bottom:18px}
+
+.bloque{margin-bottom:20px}
+.bloque > label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--oro);margin-bottom:9px;
+}
+.bloque .nota{font-size:12.5px;color:var(--hueso-tenue);margin-top:7px;line-height:1.45}
+
+.campo{
+  width:100%;background:#0a2019;border:1px solid var(--fieltro-borde);
+  color:var(--hueso);font-family:'Instrument Sans',sans-serif;font-size:16px;
+  padding:12px 13px;border-radius:var(--radio);outline:none;
+}
+.campo:focus{border-color:var(--oro)}
+select.campo:disabled{opacity:.4;cursor:not-allowed;border-color:var(--fieltro-borde)}
+select.campo{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23a9b5ad'%3E%3Cpath d='M6 8 0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  background:#0a2019;border:1px solid var(--fieltro-borde);color:var(--hueso-tenue);
+  padding:9px 14px;border-radius:999px;font-size:14px;font-weight:500;
+}
+.chip.activo{background:var(--rojo);border-color:var(--rojo);color:#fff;font-weight:600}
+.chip.bloqueado{
+  opacity:.55;text-decoration:line-through;text-decoration-thickness:2px;
+  text-decoration-color:var(--oro);cursor:not-allowed;
+}
+
+.interruptor{
+  display:flex;gap:12px;align-items:flex-start;cursor:pointer;
+  background:#0a2019;border:1px solid var(--fieltro-borde);
+  padding:14px;border-radius:var(--radio);
+  /* corta la herencia del label de sección */
+  text-transform:none;letter-spacing:normal;color:var(--hueso);font-size:14.5px;font-weight:400;
+}
+.interruptor.activo{border-color:var(--oro);background:rgba(224,166,60,.09)}
+.interruptor input{margin-top:2px;width:19px;height:19px;accent-color:var(--oro);flex:none}
+.interruptor .txt{font-size:14.5px;font-weight:600;line-height:1.35}
+.interruptor .txt small{display:block;font-weight:400;font-size:12.5px;color:var(--hueso-tenue);margin-top:3px}
+
+.acciones{display:flex;gap:10px;margin-top:22px}
+.acciones button{flex:1;min-height:46px;font-size:15px}
+
+.error{color:var(--rojo);font-size:13.5px;margin-top:12px;font-weight:600}
+.error:empty{display:none}
+
+/* ====== Aviso flotante ====== */
+.aviso{
+  position:fixed;left:50%;bottom:96px;transform:translateX(-50%);
+  z-index:60;background:#0a2019;border:1px solid var(--oro);
+  color:var(--hueso);font-size:14px;font-weight:600;
+  padding:11px 18px;border-radius:999px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:sube .2s ease;max-width:90vw;text-align:center;
+}
+.aviso[hidden]{display:none}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+/* --- Pantallas táctiles: blancos de toque y sin zoom de iOS --- */
+@media (pointer:coarse){
+  /* iOS Safari hace zoom si el input mide menos de 16px */
+  input.nombre, input.monto, .campo{font-size:16px}
+  input.nombre{padding:14px 0}
+  input.monto{padding:14px 6px}
+  .neto{padding:14px 6px;font-size:16px}
+  .btn-x{padding:11px 6px;font-size:18px}
+  /* angosta, pero el blanco de toque sigue midiendo 44px de alto */
+  td.quitar .btn-x{min-height:44px}
+  th .btn-x{padding:5px 8px;font-size:15px}
+  .btn-reabrir{padding:6px 10px;font-size:16px}
+  .chip{padding:11px 16px}
+  .btn{min-height:46px}
+}
+
+/* --- Tablets e iPad: los números grandes, que es donde se juega --- */
+@media (min-width:768px){
+  .envoltura{
+    padding-left:max(24px, env(safe-area-inset-left));
+    padding-right:max(24px, env(safe-area-inset-right));
+  }
+  header{padding:34px 0 22px}
+
+  /* encabezados y pie de la tabla */
+  thead th{font-size:12px;letter-spacing:.14em;padding:14px 14px}
+  .estado-partido{font-size:9.5px;margin-top:4px}
+  tfoot td{font-size:16px;padding:15px 14px}
+  tfoot td.col-nombre{font-size:12px}
+  tfoot td.gran-total{font-size:19px}
+
+  /* nombres */
+  td.col-nombre, th.col-nombre{min-width:215px;max-width:290px}
+  .celda-nombre{padding:0 10px 0 16px;gap:10px}
+  .ficha-num{font-size:12.5px;width:18px}
+  input.nombre{font-size:19px;padding:17px 0}
+
+  input.nombre{font-size:20px}
+
+  /* apuestas y resultados: lo que más se lee */
+  input.monto{font-size:20.5px;width:120px;padding:18px 8px}
+  .neto{font-size:20.5px;min-width:120px;padding:18px 8px}
+  td.total{font-size:23px;padding:0 22px}
+
+  /* la × ocupa lo mínimo: lo que sobra se lo llevan los números */
+  .btn-x{font-size:18px;padding:10px 5px}
+  th .btn-x, .btn-reabrir{font-size:17px;padding:5px 9px}
+
+  .pie{padding:15px 24px calc(15px + env(safe-area-inset-bottom))}
+}
+
+/* --- iPad grande y horizontal: un punto más y ya no hace falta scroll --- */
+@media (min-width:1024px){
+  table{min-width:100%}
+  thead th{font-size:12.5px}
+  input.nombre{font-size:21px}
+  input.monto{font-size:22px;width:130px}
+  .neto{font-size:22px;min-width:130px}
+  td.total{font-size:25px}
+  tfoot td{font-size:18px}
+  tfoot td.gran-total{font-size:21px}
+}
+
+/* --- Celulares --- */
+@media (max-width:520px){
+  header{padding:20px 0 14px;margin-bottom:14px;align-items:center}
+  .subtitulo{font-size:11px;margin-top:5px}
+  .dado{width:21px;height:21px;padding:2.5px;border-radius:5px}
+
+  /* la barra se vuelve un carrusel para no comerse tres líneas */
+  .barra{
+    flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
+    margin:0 -14px 14px;padding:0 14px 4px;
+    scrollbar-width:none;
+  }
+  .barra::-webkit-scrollbar{display:none}
+  .barra .btn{flex:none;padding:10px 14px;font-size:13.5px}
+
+  .marco{border-radius:12px}
+  thead th{padding:10px 9px;font-size:10px;letter-spacing:.1em}
+  td.col-nombre, th.col-nombre{min-width:132px;max-width:150px}
+  .celda-nombre{padding:0 4px 0 9px;gap:5px}
+  .ficha-num{width:12px;font-size:10px}
+  input.monto{width:68px}
+  .neto{min-width:68px;font-size:14.5px}
+  td.total{padding:0 9px;font-size:14px}
+  .estado-partido{font-size:8px;letter-spacing:.12em}
+
+  /* pie compacto */
+  .pie{padding:11px 12px calc(11px + env(safe-area-inset-bottom))}
+  .pie-interno{gap:9px}
+  .resumen-pie{font-size:11px;line-height:1.4}
+  .resumen-pie b{font-size:13px}
+  .btn-finalizar{font-size:14px;padding:13px 15px;letter-spacing:.03em}
+
+  /* modales tipo hoja pegada abajo */
+  .velo{padding:0}
+  .tarjeta{
+    border-radius:18px 18px 0 0;border-bottom:none;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    max-height:92dvh;
+  }
+  .tarjeta h2{font-size:21px}
+}
+
+/* --- Celulares angostos tipo SE / A03 --- */
+@media (max-width:360px){
+  .dados{display:none}
+  .titulo{font-size:27px}
+  input.monto{width:60px}
+  .neto{min-width:60px;font-size:13.5px}
+  td.col-nombre, th.col-nombre{min-width:118px;max-width:132px}
+  .btn-finalizar{font-size:13px;padding:12px 12px}
+  .resumen-pie{font-size:10.5px}
+}
+
+/* --- Horizontal en celular: poca altura, todo se aprieta --- */
+@media (max-height:500px) and (orientation:landscape){
+  body{padding-bottom:110px}
+  header{padding:14px 0 10px;margin-bottom:12px}
+  .titulo{font-size:26px}
+  .dados{display:none}
+  .velo{align-items:center;padding:10px}
+  .tarjeta{max-height:94dvh;border-radius:16px;border-bottom:1px solid var(--fieltro-borde)}
+  .bloque{margin-bottom:14px}
+  .pie{padding:9px 12px calc(9px + env(safe-area-inset-bottom))}
+}
+
+/* --- Respeta a quien apaga las animaciones --- */
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
