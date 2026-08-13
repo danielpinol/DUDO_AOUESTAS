@@ -760,7 +760,7 @@ async function iniciar(){
     avisar('Mesa recuperada');
   } else {
     partidos = [partidoNuevo()];
-    for (let i = 0; i < 4; i++) agregarJugador();
+    agregarJugador();   // la mesa arranca con uno solo: los demás se van añadiendo
     if (modoGuardado === 'memoria'){
       setTimeout(() => avisar('Este visor no deja guardar: descargá el archivo'), 700);
     }
