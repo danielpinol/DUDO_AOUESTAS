@@ -429,17 +429,19 @@ function irAlFinal(){
 
 function actualizarPie(){
   const cerrados = partidos.filter(p => p.cerrado).length;
-  const estado = modoGuardado === 'memoria'
-    ? '<span style="color:var(--rojo)">no guarda al recargar</span>'
-    : 'se guarda solo';
   const abierto = indiceAbierto();
-  document.getElementById('resumenPie').innerHTML =
-    jugadores.length + ' jugador' + (jugadores.length === 1 ? '' : 'es') +
-    ' · ' + cerrados + ' de ' + partidos.length + ' cerrado' + (cerrados === 1 ? '' : 's') +
-    ' · ' + estado +
-    '<br>' + (abierto >= 0
-      ? 'En juego: <b>Partido ' + (abierto + 1) + '</b>'
-      : '<b>No hay partido abierto</b>');
+
+  // Todo en una sola línea, para que el pie no ocupe dos renglones.
+  const partes = [
+    jugadores.length + ' jugador' + (jugadores.length === 1 ? '' : 'es'),
+    abierto >= 0 ? 'En juego: <b>Partido ' + (abierto + 1) + '</b>' : '<b>Sin partido abierto</b>',
+    cerrados + ' de ' + partidos.length + ' cerrado' + (partidos.length === 1 ? '' : 's')
+  ];
+  // El guardado solo se menciona cuando está fallando: si va bien, no gasta espacio.
+  if (modoGuardado === 'memoria'){
+    partes.push('<span style="color:var(--rojo)">no guarda al recargar</span>');
+  }
+  document.getElementById('resumenPie').innerHTML = partes.join(' · ');
   document.getElementById('btnFinalizar').disabled = jugadores.length < 2 || abierto < 0;
   guardar(); // actualizarPie corre en cada cambio, así que guardamos aquí
 }
