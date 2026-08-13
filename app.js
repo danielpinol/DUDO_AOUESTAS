@@ -372,7 +372,7 @@ function dibujar(){
 
   // Fila de sumas: en un partido cerrado tiene que dar cero; si no da cero, va en rojo
   html += '</tbody><tfoot><tr>';
-  html += '<td class="col-nombre">Suma de la columna</td><td></td>';
+  html += '<td class="col-nombre">Suma</td><td></td>';
   partidos.forEach((p, r) => {
     const suma = sumaColumna(r);
     if (p.cerrado){
