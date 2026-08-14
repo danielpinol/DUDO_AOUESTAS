@@ -14,6 +14,9 @@
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
+/* Sin rebote elástico: al tirar de la página, iOS despegaba el pie del borde */
+html{height:100%;overflow:hidden;overscroll-behavior:none}
+
 body{
   font-family:'Instrument Sans',system-ui,sans-serif;
   background:var(--fieltro);
@@ -22,8 +25,14 @@ body{
     radial-gradient(ellipse 90% 60% at 100% 110%, rgba(30,86,67,.6), transparent 70%);
   background-attachment:fixed;
   color:var(--hueso);
-  min-height:100dvh;
-  padding:0 0 calc(96px + env(safe-area-inset-bottom, 0px));
+  /* Pantalla partida en dos: arriba lo que se desplaza, abajo el pie.
+     El pie ya NO es position:fixed, es el último tramo de esta columna,
+     así que no hay forma de que se despegue del borde ni de que lo mueva
+     el teclado. fijarPie() solo ajusta este alto cuando el teclado aparece. */
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
   -webkit-font-smoothing:antialiased;
   -webkit-text-size-adjust:100%;
 }
@@ -32,6 +41,16 @@ body{
 body::before{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* lo único con desplazamiento vertical en toda la app */
+.lienzo{
+  flex:1 1 auto;
+  min-height:0;                 /* si no, flex se niega a encoger y no hay scroll */
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
 
 .envoltura{
@@ -246,14 +265,14 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
 
 /* ====== Pie fijo ====== */
 .pie{
-  position:fixed;left:0;right:0;bottom:0;z-index:20;
-  background:linear-gradient(to top,#071a14 62%,rgba(7,26,20,.86) 100%);
+  flex:0 0 auto;              /* último tramo de la columna, nunca se encoge */
+  position:relative;z-index:20;
+  background:#071a14;
   border-top:1px solid var(--fieltro-borde);
   padding-top:9px;
   padding-bottom:max(9px, env(safe-area-inset-bottom));
   padding-left:max(14px, env(safe-area-inset-left));
   padding-right:max(14px, env(safe-area-inset-right));
-  backdrop-filter:blur(8px);
 }
 .pie-interno{max-width:1240px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
 .resumen-pie{font-size:11.5px;color:var(--hueso-tenue);line-height:1.35}
@@ -357,7 +376,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
 /* ====== Aviso flotante ====== */
 .aviso{
-  position:fixed;left:50%;bottom:96px;transform:translateX(-50%);
+  position:fixed;left:50%;bottom:calc(74px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);
   z-index:60;background:#0a2019;border:1px solid var(--oro);
   color:var(--hueso);font-size:14px;font-weight:600;
   padding:11px 18px;border-radius:999px;
@@ -441,7 +460,6 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .resumen-pie{font-size:12.5px}
   .resumen-pie b{font-size:14px}
   .btn-finalizar{font-size:15px;padding:11px 20px}
-  body{padding-bottom:calc(104px + env(safe-area-inset-bottom, 0px))}
 }
 
 /* --- iPad grande y horizontal: un punto más y ya no hace falta scroll --- */
@@ -492,6 +510,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .resumen-pie{font-size:10.5px;line-height:1.35}
   .resumen-pie b{font-size:12px}
   .btn-finalizar{font-size:13px;padding:10px 14px;letter-spacing:.03em}
+  .aviso{bottom:calc(62px + env(safe-area-inset-bottom, 0px))}
 
   /* modales tipo hoja pegada abajo */
   .velo{padding:0}
@@ -516,7 +535,6 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
 /* --- Horizontal en celular: poca altura, todo se aprieta --- */
 @media (max-height:500px) and (orientation:landscape){
-  body{padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
   header{padding:calc(14px + env(safe-area-inset-top, 0px)) 0 10px;margin-bottom:12px}
   .titulo{font-size:26px}
   .dados{display:none}

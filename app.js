@@ -428,14 +428,12 @@ function irAlFinal(){
 }
 
 function actualizarPie(){
-  const cerrados = partidos.filter(p => p.cerrado).length;
   const abierto = indiceAbierto();
 
-  // Todo en una sola línea, para que el pie no ocupe dos renglones.
+  // Solo dos datos: cuántos son y por qué partido van.
   const partes = [
     jugadores.length + ' jugador' + (jugadores.length === 1 ? '' : 'es'),
-    abierto >= 0 ? 'En juego: <b>Partido ' + (abierto + 1) + '</b>' : '<b>Sin partido abierto</b>',
-    cerrados + ' de ' + partidos.length + ' cerrado' + (partidos.length === 1 ? '' : 's')
+    abierto >= 0 ? 'Partido <b>' + (abierto + 1) + '</b>' : 'Sin partido abierto'
   ];
   // El guardado solo se menciona cuando está fallando: si va bien, no gasta espacio.
   if (modoGuardado === 'memoria'){
@@ -550,7 +548,8 @@ document.getElementById('tresFichas').addEventListener('change', function(){
    CIERRE DE UN PARTIDO
    - cada quien aporta lo que dice su casilla de ESE partido
    - si se ganó con 3 fichas o más: ×2 a la apuesta de todos
-   - si alguien perdió con 1 ficha: ×2 extra solo a él, y se acumula con el otro → ×4
+   - si alguien perdió con 1 ficha: ×2 solo a él
+   - los dos multiplicadores NO se acumulan: el tope es ×2
    - el pozo lo forman SOLO los perdedores; el ganador no pierde lo suyo
    - los ganadores se parten el pozo en partes iguales
    - al perdedor le queda −(lo que aportó), al ganador +(su parte del pozo)
@@ -588,12 +587,14 @@ function calcularCierre(){
     return;
   }
 
-  // lo que aporta cada quien en este partido, con su multiplicador
+  // Lo que aporta cada quien en este partido.
+  // Los dos multiplicadores NO se acumulan: con que aplique uno, la apuesta
+  // queda en ×2. El que perdió doble en un partido de virgo paga ×2, no ×4.
   const aporte = {};
   jugadores.forEach(j => {
-    let mult = 1;
-    if (tres) mult *= 2;                                                  // ×2 a todos: se ganó con 3 fichas o más
-    if (unaFicha.includes(j.id) && !ganadores.includes(j.id)) mult *= 2;  // ×2 extra: perdió con 1 ficha
+    const porVirgo  = tres;
+    const porDoble  = unaFicha.includes(j.id) && !ganadores.includes(j.id);
+    const mult = (porVirgo || porDoble) ? 2 : 1;
     aporte[j.id] = (Number(j.celdas[indice].monto) || 0) * mult;
   });
 
@@ -669,6 +670,29 @@ function pedirReabrir(indice){
       avisar('Partido ' + (indice + 1) + ' reabierto');
     });
 }
+
+/* =========================================================
+   EL PIE NO SE DESPEGA DEL BORDE
+   El pie ya no flota: es el último tramo de una columna que mide lo alto
+   de la pantalla (ver el CSS del body). Lo único que falta es que esa
+   columna sepa encogerse cuando el teclado tapa media pantalla, porque
+   en iOS la ventana VISIBLE se achica pero la de DISEÑO no se entera.
+   ========================================================= */
+function fijarPie(){
+  const vv = window.visualViewport;
+  if (!vv) return;
+  document.body.style.height = Math.round(vv.height) + 'px';
+  // iOS a veces empuja la página entera para enseñar el campo: se devuelve
+  if (window.scrollTo) window.scrollTo(0, 0);
+}
+
+if (window.visualViewport){
+  window.visualViewport.addEventListener('resize', fijarPie);
+  window.visualViewport.addEventListener('scroll', fijarPie);
+}
+// algunos navegadores tardan en reportar el teclado: se revisa al entrar y salir de un campo
+document.addEventListener('focusin', () => setTimeout(fijarPie, 60));
+document.addEventListener('focusout', () => setTimeout(fijarPie, 60));
 
 /* cerrar modal tocando el fondo */
 document.querySelectorAll('.velo').forEach(v => {
