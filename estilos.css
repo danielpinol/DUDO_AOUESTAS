@@ -10,6 +10,9 @@
   --rojo:#e4674a;
   --menta:#68d29b;
   --radio:10px;
+  /* Alto de la barra de abajo. Es un valor de arranque: medirPie() lo cambia
+     por el alto medido de verdad en cuanto carga la página. */
+  --alto-pie:74px;
   /* La página YA es oscura. Sin esto, el "tema oscuro automático" de
      Chrome y de Samsung Internet la vuelve a invertir y las cifras de la
      tabla quedan del mismo color que su fondo: la tabla se ve vacía. */
@@ -31,10 +34,10 @@ body{
     radial-gradient(ellipse 90% 60% at 100% 110%, rgba(30,86,67,.6), transparent 70%);
   background-attachment:fixed;
   color:var(--hueso);
-  /* Pantalla partida en dos: arriba lo que se desplaza, abajo el pie.
-     El pie ya NO es position:fixed, es el último tramo de esta columna,
-     así que no hay forma de que se despegue del borde ni de que lo mueva
-     el teclado. fijarPie() solo ajusta este alto cuando el teclado aparece. */
+  /* La barra de abajo salió de esta columna: va clavada a la pantalla con
+     position:fixed. Aquí solo queda la zona que se desplaza. Como html y body
+     tienen overflow:hidden y overscroll-behavior:none, la página no se mueve
+     ni un pixel, que era lo que antes despegaba a los elementos fijos en iOS. */
   height:100vh;      /* respaldo: Android viejo y WebView no conocen dvh */
   height:100dvh;
   display:flex;
@@ -64,6 +67,8 @@ body::before{
   position:relative;z-index:1;max-width:1240px;margin:0 auto;
   padding-left:max(14px, env(safe-area-inset-left));
   padding-right:max(14px, env(safe-area-inset-right));
+  /* que la última fila no quede escondida detrás de la barra de abajo */
+  padding-bottom:calc(var(--alto-pie) + 18px);
 }
 
 /* ====== Encabezado ====== */
@@ -301,14 +306,54 @@ tfoot td.descuadra{color:var(--rojo);background:rgba(228,103,74,.16)}
 tfoot td.en-juego{color:var(--hueso-tenue)}
 
 /* ====== Vacío ====== */
-.vacio{padding:52px 22px;text-align:center;color:var(--hueso-tenue)}
-.vacio h3{font-family:'Anton',sans-serif;font-size:21px;color:var(--hueso);letter-spacing:.02em;margin-bottom:7px;text-transform:uppercase}
-.vacio p{font-size:14px;max-width:290px;margin:0 auto}
+/* Con la mesa vacía el marco no enmarca una tabla, así que no puede seguir
+   midiendo lo que mide su contenido: se abre a lo ancho de la pantalla. */
+.marco.sin-mesa{width:auto;max-width:none}
+.marco.sin-mesa .scroll{overflow:visible}
+
+/* El mensaje crece con la pantalla en vez de quedarse del tamaño de una fila.
+   clamp() hace el trabajo de tres media queries: mínimo de celular, máximo de
+   tablet grande, y en medio va subiendo solo con el ancho. */
+.vacio{
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(44px, 11vw, 108px) clamp(20px, 5vw, 48px);
+  text-align:center;color:var(--hueso-tenue);
+}
+.vacio h3{
+  font-family:'Anton',sans-serif;
+  font-size:clamp(22px, 5vw, 44px);
+  line-height:1.05;color:var(--hueso);
+  letter-spacing:.02em;text-transform:uppercase;
+  margin:clamp(16px, 2.6vw, 26px) 0 clamp(8px, 1.2vw, 14px);
+}
+.vacio p{
+  font-size:clamp(14px, 2vw, 20px);
+  line-height:1.5;max-width:34ch;margin:0 auto;
+}
+
+/* Un dado grande de adorno, con la cara del 5, para que no sea puro texto */
+.vacio-dado{
+  width:clamp(52px, 11vw, 104px);
+  aspect-ratio:1;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:clamp(7px, 1.4vw, 13px);gap:2px;
+  background:var(--hueso);border-radius:clamp(10px, 2vw, 20px);
+  box-shadow:0 6px 0 rgba(0,0,0,.35);
+  transform:rotate(-7deg);opacity:.9;
+}
+.vacio-dado span{border-radius:50%;background:transparent}
+/* cara del 5: las cuatro esquinas y el centro */
+.vacio-dado span:nth-child(1),
+.vacio-dado span:nth-child(3),
+.vacio-dado span:nth-child(5),
+.vacio-dado span:nth-child(7),
+.vacio-dado span:nth-child(9){background:var(--fieltro)}
 
 /* ====== Pie fijo ====== */
 .pie{
-  flex:0 0 auto;              /* último tramo de la columna, nunca se encoge */
-  position:relative;z-index:20;
+  /* Clavada al borde de abajo de la pantalla, pase lo que pase. Con el teclado
+     abierto no se mueve: el teclado la tapa y ya. */
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
   background:#071a14;
   border-top:1px solid var(--fieltro-borde);
   padding-top:9px;
@@ -422,7 +467,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
 /* ====== Aviso flotante ====== */
 .aviso{
-  position:fixed;left:50%;bottom:calc(74px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);
+  position:fixed;left:50%;bottom:calc(var(--alto-pie) + 12px);transform:translateX(-50%);
   z-index:60;background:#0a2019;border:1px solid var(--oro);
   color:var(--hueso);font-size:14px;font-weight:600;
   padding:11px 18px;border-radius:999px;
@@ -559,7 +604,6 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .resumen-pie{font-size:13px;line-height:1.35}
   .resumen-pie b{font-size:14.5px}
   .btn-finalizar{font-size:13px;padding:10px 14px;letter-spacing:.03em}
-  .aviso{bottom:calc(62px + env(safe-area-inset-bottom, 0px))}
 
   /* modales tipo hoja pegada abajo */
   .velo{padding:0}

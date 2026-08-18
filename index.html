@@ -2,11 +2,12 @@
 <html lang="es-GT">
 <head>
 <meta charset="UTF-8">
-<!-- interactive-widget=resizes-content: al abrir el teclado, Android encoge la
-     página entera en vez de dejarla del alto de siempre y taparle la mitad.
-     Así el 100dvh del CSS ya cuenta con el teclado y el pie no se despega.
+<!-- interactive-widget=resizes-visual: el teclado NO encoge la página. La barra
+     de abajo está clavada al borde inferior de la PANTALLA, así que cuando sale
+     el teclado se queda donde está y el teclado la tapa, que es lo que se quiere.
+     Con resizes-content la página se encogía y la barra se subía a media pantalla.
      maximum-scale=1 + user-scalable=no: al tocar un campo no hay acercamiento. -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
 <!-- La página ya viene oscura: esto le dice a Chrome y a Samsung Internet que
      NO le apliquen su tema oscuro automático, que invertía la tabla entera. -->
 <meta name="color-scheme" content="dark">
@@ -21,7 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
      celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
-<link rel="stylesheet" href="estilos.css?v=3">
+<link rel="stylesheet" href="estilos.css?v=5">
 </head>
 <body>
 
@@ -120,6 +121,6 @@
 
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

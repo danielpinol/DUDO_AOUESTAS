@@ -323,16 +323,27 @@ function aplicarMontoGeneral(){
    ========================================================= */
 function dibujar(){
   const cont = document.getElementById('contenedorTabla');
+  // El marco mide lo que mide la tabla (width:max-content). Cuando adentro no
+  // hay tabla sino un mensaje, ese ancho ya no sirve: hay que avisarle para que
+  // se abra a lo ancho de la pantalla en vez de encogerse al ancho del texto.
+  const marco = cont.parentElement;
 
   if (!jugadores.length){
+    if (marco) marco.classList.add('sin-mesa');
     cont.innerHTML =
       '<div class="vacio">' +
+        '<div class="vacio-dado" aria-hidden="true">' +
+          '<span></span><span></span><span></span>' +
+          '<span></span><span></span><span></span>' +
+          '<span></span><span></span><span></span>' +
+        '</div>' +
         '<h3>La mesa está vacía</h3>' +
         '<p>Añadí a los que van a jugar y poné el monto de la apuesta.</p>' +
       '</div>';
     actualizarPie();
     return;
   }
+  if (marco) marco.classList.remove('sin-mesa');
 
   const abierto = indiceAbierto();
 
@@ -695,76 +706,30 @@ function pedirReabrir(indice){
 }
 
 /* =========================================================
-   EL PIE NO SE DESPEGA DEL BORDE
-   El pie ya no flota: es el último tramo de una columna que mide lo alto
-   de la pantalla (ver el CSS del body). Lo único que falta es que esa
-   columna sepa encogerse cuando el teclado tapa media pantalla, porque
-   en iOS la ventana VISIBLE se achica pero la de DISEÑO no se entera.
+   LA BARRA DE ABAJO
+   Está clavada al borde inferior de la PANTALLA con position:fixed, y ya.
+   Nada de JavaScript midiendo el teclado: eso era justo lo que la movía.
+   Al salir el teclado, la barra se queda donde está y el teclado la tapa.
+
+   Lo único que hace falta de JS es decirle al contenido cuánto alto ocupa la
+   barra, para que la última fila de la tabla no quede escondida detrás. Se
+   MIDE, no se adivina: el alto cambia con el tamaño de letra, con el largo del
+   texto y con la franja de abajo del iPhone.
    ========================================================= */
-/* El pie tiene que quedar pegado al borde de lo que SE VE, que con el teclado
-   abierto no es lo mismo que el borde de la página.
-
-   La medida buena es vv.offsetTop + vv.height:
-     - vv.height    es lo que queda libre encima del teclado
-     - vv.offsetTop es cuánto bajó el navegador esa ventanita dentro de la página
-   El error de antes era usar solo vv.height. Cuando el navegador empujaba la
-   vista hacia abajo para enseñar el campo (offsetTop > 0), el cuerpo quedaba
-   más corto que el borde visible y el pie aparecía a media pantalla.
-   window.scrollTo(0,0) no arreglaba eso: mueve la página, no la ventanita. */
-function fijarPie(){
-  const vv = window.visualViewport;
-  if (!vv) return;
-
-  const visible = Math.round(vv.height + vv.offsetTop);
-  const pagina  = window.innerHeight || visible;
-
-  // Sin teclado (o casi): se suelta el alto y manda el 100dvh del CSS, que es
-  // el que sabe de barras de navegación que aparecen y desaparecen.
-  const tapado = pagina - visible;
-  if (!isFinite(visible) || visible < 200 || tapado < 40){
-    if (document.body.style.height) document.body.style.height = '';
-    return;
-  }
-
-  document.body.style.height = visible + 'px';
+function medirPie(){
+  const pie = document.querySelector('.pie');
+  if (!pie) return;
+  const alto = Math.ceil(pie.getBoundingClientRect().height);
+  if (alto > 0) document.documentElement.style.setProperty('--alto-pie', alto + 'px');
 }
 
-/* Con el teclado abierto, la fila que se está escribiendo no puede quedar
-   detrás del teclado. Se acomoda lo mínimo, sin saltos. */
-function acercarLoQueSeEscribe(){
-  const a = document.activeElement;
-  if (!a || !a.scrollIntoView) return;
-  if (a.tagName !== 'INPUT' && a.tagName !== 'SELECT') return;
-  try{ a.scrollIntoView({ block:'nearest', inline:'nearest' }); }catch(e){}
+if (window.ResizeObserver){
+  new ResizeObserver(medirPie).observe(document.querySelector('.pie'));
+} else {
+  window.addEventListener('resize', medirPie);
+  window.addEventListener('orientationchange', () => setTimeout(medirPie, 300));
 }
-
-/* Android reporta el teclado tarde y en varios tirones: se mide unas cuantas
-   veces en el primer medio segundo en vez de confiar en un solo aviso. */
-let reintentosPie = [];
-function revisarPie(){
-  reintentosPie.forEach(clearTimeout);
-  reintentosPie = [60, 180, 350, 550].map(ms => setTimeout(() => {
-    fijarPie();
-    acercarLoQueSeEscribe();
-  }, ms));
-  fijarPie();
-}
-
-// Al girar el aparato, Android reporta medidas viejas por un instante:
-// se suelta el alto de una y se vuelve a medir cuando ya se asentó.
-window.addEventListener('orientationchange', () => {
-  document.body.style.height = '';
-  setTimeout(revisarPie, 300);
-});
-window.addEventListener('resize', fijarPie);
-
-if (window.visualViewport){
-  window.visualViewport.addEventListener('resize', fijarPie);
-  window.visualViewport.addEventListener('scroll', fijarPie);
-}
-// algunos navegadores tardan en reportar el teclado: se revisa al entrar y salir de un campo
-document.addEventListener('focusin', revisarPie);
-document.addEventListener('focusout', revisarPie);
+medirPie();
 
 /* cerrar modal tocando el fondo */
 document.querySelectorAll('.velo').forEach(v => {
