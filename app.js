@@ -236,7 +236,7 @@ function quitarJugador(id){
 
 // Borra todo y arranca de cero
 function nuevaMesa(){
-  confirmar('Nueva mesa', 'Se van los jugadores, todos los partidos y lo guardado. No hay vuelta atrás.', () => {
+  confirmar('Nueva mesa', 'Se van los jugadores, todos los partidos y lo guardado. No se puede regresar.', () => {
     jugadores = [];
     partidos = [partidoNuevo()];
     contadorId = 1;

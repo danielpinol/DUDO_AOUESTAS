@@ -370,6 +370,16 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
   padding:10px 18px;border-radius:var(--radio);flex:none;
   box-shadow:0 3px 0 #9d6f1c;
 }
+/* Red de seguridad para la pantalla de inicio del iPhone.
+   Si por lo que sea el viewport que le toca a la app termina más corto que la
+   pantalla, abajo de la barra asomaba una franja con el verde del fondo. Este
+   pedazo alarga el color de la barra 240px hacia abajo: fuera de pantalla no
+   se ve, y si asoma algo, asoma del mismo color de la barra y no se nota. */
+.pie::before{
+  content:'';position:absolute;left:0;right:0;top:100%;height:240px;
+  background:#071a14;pointer-events:none;
+}
+
 .btn-finalizar:hover{background:var(--oro-suave)}
 .btn-finalizar:active{box-shadow:0 1px 0 #9d6f1c}
 .btn-finalizar:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}

@@ -14,7 +14,13 @@
 <title>Dudo — Control de apuestas</title>
 <meta name="theme-color" content="#0d2a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- OJO: aquí NO puede ir black-translucent. En un iPhone con la app metida en
+     la pantalla de inicio, ese valor sube la vista por debajo de la barra de
+     estado pero NO le crece el alto al viewport. Resultado: sobra por abajo
+     justo lo que mide la barra de estado, y la barra de la app queda flotando
+     con una franja verde debajo. Con "black" la vista arranca debajo de la
+     barra de estado, sin correrse, y el fondo de la pantalla queda pegado. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +28,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
      celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
-<link rel="stylesheet" href="estilos.css?v=5">
+<link rel="stylesheet" href="estilos.css?v=6">
 </head>
 <body>
 
@@ -121,6 +127,6 @@
 
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
