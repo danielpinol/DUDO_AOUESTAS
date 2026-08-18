@@ -2,15 +2,26 @@
 <html lang="es-GT">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- interactive-widget=resizes-content: al abrir el teclado, Android encoge la
+     página entera en vez de dejarla del alto de siempre y taparle la mitad.
+     Así el 100dvh del CSS ya cuenta con el teclado y el pie no se despega.
+     maximum-scale=1 + user-scalable=no: al tocar un campo no hay acercamiento. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<!-- La página ya viene oscura: esto le dice a Chrome y a Samsung Internet que
+     NO le apliquen su tema oscuro automático, que invertía la tabla entera. -->
+<meta name="color-scheme" content="dark">
 <title>Dudo — Control de apuestas</title>
 <meta name="theme-color" content="#0d2a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css">
+<!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
+     celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
+<link rel="stylesheet" href="estilos.css?v=3">
 </head>
 <body>
 
@@ -75,15 +86,14 @@
     <div class="bloque">
       <label>2 · ¿Perdió Doble?</label>
       <div class="chips" id="chipsUnaFicha"></div>
-      <p class="nota">Apuesta se multiplica ×2.</p>
     </div>
 
     <div class="bloque">
       <label>3 · ¿ Ganó Virgo?</label>
       <label class="interruptor" id="envolturaTres">
         <input type="checkbox" id="tresFichas">
-        <span class="txt">Ganó con 3 fichas 
-          <small>Se multiplica ×2 la apuesta de todos.</small>
+        <span class="txt">Ganó con 3 fichas
+          <small>Todos los perdedores ponen una apuesta más.</small>
         </span>
       </label>
     </div>
@@ -110,6 +120,6 @@
 
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

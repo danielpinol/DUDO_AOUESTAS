@@ -45,11 +45,20 @@ const CLAVE = 'dudo-mesa-v2';
 let temporizadorGuardado = null;
 let modoGuardado = 'memoria'; // 'claude' | 'local' | 'memoria'
 
+/* Un almacén que no contesta no puede dejar la app colgada sin dibujar nada:
+   pasado el tope se sigue adelante como si no existiera. */
+function conTope(promesa, ms){
+  return Promise.race([
+    Promise.resolve(promesa),
+    new Promise((_, rechazar) => setTimeout(() => rechazar(new Error('tardó demasiado')), ms))
+  ]);
+}
+
 // Se prueba UNA sola vez al abrir, con una escritura real
 async function detectarGuardado(){
   try{
     if (window.storage && window.storage.set){
-      await window.storage.set(CLAVE + '-prueba', 'ok');
+      await conTope(window.storage.set(CLAVE + '-prueba', 'ok'), 2500);
       try{ await window.storage.delete(CLAVE + '-prueba'); }catch(e){}
       modoGuardado = 'claude';
       return;
@@ -90,7 +99,7 @@ function guardar(){
 async function leerGuardado(){
   try{
     if (modoGuardado === 'claude'){
-      const r = await window.storage.get(CLAVE);
+      const r = await conTope(window.storage.get(CLAVE), 2500);
       return r && r.value ? JSON.parse(r.value) : null;
     }
     if (modoGuardado === 'local'){
@@ -158,6 +167,24 @@ function totalJugador(j){
   return partidos.reduce((s, p) => p.cerrado ? s + (Number(p.netos[j.id]) || 0) : s, 0);
 }
 
+/* Lo que se apostó en una columna. No hay una sola cifra garantizada: cada
+   quien puede llevar una multa distinta en su casilla. Se toma la que más se
+   repite, que es la apuesta de la mesa, y se avisa aparte si alguien va aparte. */
+function apuestaColumna(indice){
+  const cuenta = new Map();
+  jugadores.forEach(j => {
+    const c = j.celdas[indice];
+    if (!c) return;
+    const m = Number(c.monto) || 0;
+    cuenta.set(m, (cuenta.get(m) || 0) + 1);
+  });
+  if (!cuenta.size) return { monto:0, mixta:false };
+
+  let comun = 0, veces = -1;
+  cuenta.forEach((n, m) => { if (n > veces){ veces = n; comun = m; } });
+  return { monto: comun, mixta: cuenta.size > 1 };
+}
+
 // Suma vertical de una columna: la neta si está cerrado, lo apostado si sigue abierto
 function sumaColumna(indice){
   const p = partidos[indice];
@@ -173,12 +200,16 @@ function indiceAbierto(){
 }
 
 /* ---------- alta y baja ---------- */
-function agregarJugador(){
+function agregarJugador(enfocar){
   const apuesta = jugadores.length ? jugadores[0].apuesta : 20;
   const celdas = partidos.map(() => ({ monto: apuesta, editado:false }));
   jugadores.push({ id: contadorId++, nombre: nombrePorDefecto(), apuesta: apuesta, celdas: celdas });
   dibujar();
-  // enfocar el nombre recién creado para escribirlo de una vez
+  // Enfocar el nombre recién creado para escribirlo de una vez.
+  // Al ARRANCAR no: en Android eso levanta el teclado antes de que se vea nada,
+  // el visualViewport se parte a la mitad y la tabla queda debajo del teclado,
+  // como si no tuviera ni un dato.
+  if (enfocar === false) return;
   const inputs = document.querySelectorAll('input.nombre');
   const ultimo = inputs[inputs.length - 1];
   if (ultimo){ ultimo.focus(); ultimo.select(); }
@@ -246,18 +277,6 @@ function etiqueta(j){
   return repetido ? (jugadores.indexOf(j) + 1) + ' · ' + j.nombre : j.nombre;
 }
 
-// La apuesta rellena las casillas de ESE jugador que no se hayan tocado a mano,
-// y solo en los partidos que siguen abiertos: los cerrados ya son historia.
-function cambiarApuesta(id, valor){
-  const j = buscar(id);
-  if (!j) return;
-  const r = montoValido(valor);
-  if (r.aviso) avisar(r.aviso);
-  j.apuesta = r.valor;
-  j.celdas.forEach((c, i) => { if (!c.editado && !partidos[i].cerrado) c.monto = j.apuesta; });
-  dibujar();
-}
-
 // Edición puntual de una casilla: la multa de un jugador en un partido
 function cambiarCelda(id, indice, valor){
   const j = buscar(id);
@@ -319,7 +338,6 @@ function dibujar(){
 
   let html = '<table><thead><tr>';
   html += '<th class="col-nombre">Jugador</th>';
-  html += '<th class="col-apuesta">Apuesta</th>';
   partidos.forEach((p, i) => {
     html += '<th class="col-partido ' + (p.cerrado ? 'es-cerrado' : 'es-abierto') + '">';
     html += '<span class="encabezado-partido">Partido ' + (i + 1);
@@ -328,6 +346,10 @@ function dibujar(){
     }
     html += '</span>';
     html += '<span class="estado-partido">' + (p.cerrado ? 'cerrado' : (i === abierto ? 'en juego' : 'abierto')) + '</span>';
+    // La apuesta de esa columna, chiquita, debajo del nombre del partido
+    const a = apuestaColumna(i);
+    html += '<span class="apuesta-partido">apuesta = ' + q(a.monto) +
+            (a.mixta ? '<i>hay multas</i>' : '') + '</span>';
     html += '</th>';
   });
   html += '<th class="col-total">Total</th><th></th></tr></thead><tbody>';
@@ -338,8 +360,6 @@ function dibujar(){
             '<input class="nombre" value="' + escapar(j.nombre) + '" maxlength="' + MAX_NOMBRE + '" ' +
             'oninput="cambiarNombre(' + j.id + ', this.value)" ' +
             'onblur="cerrarNombre(' + j.id + ')"></div></td>';
-    html += '<td><input class="monto apuesta" type="number" inputmode="decimal" min="0" max="' + MONTO_MAX + '" value="' + j.apuesta + '" ' +
-            'onchange="cambiarApuesta(' + j.id + ', this.value)"></td>';
 
     partidos.forEach((p, r) => {
       if (p.cerrado){
@@ -372,7 +392,7 @@ function dibujar(){
 
   // Fila de sumas: en un partido cerrado tiene que dar cero; si no da cero, va en rojo
   html += '</tbody><tfoot><tr>';
-  html += '<td class="col-nombre">Suma</td><td></td>';
+  html += '<td class="col-nombre">Suma</td>';
   partidos.forEach((p, r) => {
     const suma = sumaColumna(r);
     if (p.cerrado){
@@ -547,9 +567,10 @@ document.getElementById('tresFichas').addEventListener('change', function(){
 /* =========================================================
    CIERRE DE UN PARTIDO
    - cada quien aporta lo que dice su casilla de ESE partido
-   - si se ganó con 3 fichas o más: ×2 a la apuesta de todos
-   - si alguien perdió con 1 ficha: ×2 solo a él
-   - los dos multiplicadores NO se acumulan: el tope es ×2
+   - si se ganó con 3 fichas o más (virgo): cada perdedor pone UNA apuesta más
+   - si alguien perdió con 1 ficha (doble): ese pone UNA apuesta más
+   - los dos recargos SE SUMAN, cada uno vale una apuesta, y no se multiplican:
+     con apuesta de Q20 -> doble Q40, virgo Q40, doble+virgo Q60 (no Q80)
    - el pozo lo forman SOLO los perdedores; el ganador no pierde lo suyo
    - los ganadores se parten el pozo en partes iguales
    - al perdedor le queda −(lo que aportó), al ganador +(su parte del pozo)
@@ -588,14 +609,16 @@ function calcularCierre(){
   }
 
   // Lo que aporta cada quien en este partido.
-  // Los dos multiplicadores NO se acumulan: con que aplique uno, la apuesta
-  // queda en ×2. El que perdió doble en un partido de virgo paga ×2, no ×4.
+  // Cada recargo vale UNA apuesta más y se SUMAN entre ellos; no se multiplican.
+  // Con apuesta de Q20: doble = 20+20 = 40, virgo = 20+20 = 40,
+  // doble y virgo a la vez = 20+20+20 = 60. Nunca 80.
   const aporte = {};
   jugadores.forEach(j => {
-    const porVirgo  = tres;
-    const porDoble  = unaFicha.includes(j.id) && !ganadores.includes(j.id);
-    const mult = (porVirgo || porDoble) ? 2 : 1;
-    aporte[j.id] = (Number(j.celdas[indice].monto) || 0) * mult;
+    const esGanador = ganadores.includes(j.id);
+    const porVirgo  = tres && !esGanador;
+    const porDoble  = unaFicha.includes(j.id) && !esGanador;
+    const recargos  = (porVirgo ? 1 : 0) + (porDoble ? 1 : 0);
+    aporte[j.id] = (Number(j.celdas[indice].monto) || 0) * (1 + recargos);
   });
 
   // el pozo lo ponen solo los perdedores
@@ -678,21 +701,70 @@ function pedirReabrir(indice){
    columna sepa encogerse cuando el teclado tapa media pantalla, porque
    en iOS la ventana VISIBLE se achica pero la de DISEÑO no se entera.
    ========================================================= */
+/* El pie tiene que quedar pegado al borde de lo que SE VE, que con el teclado
+   abierto no es lo mismo que el borde de la página.
+
+   La medida buena es vv.offsetTop + vv.height:
+     - vv.height    es lo que queda libre encima del teclado
+     - vv.offsetTop es cuánto bajó el navegador esa ventanita dentro de la página
+   El error de antes era usar solo vv.height. Cuando el navegador empujaba la
+   vista hacia abajo para enseñar el campo (offsetTop > 0), el cuerpo quedaba
+   más corto que el borde visible y el pie aparecía a media pantalla.
+   window.scrollTo(0,0) no arreglaba eso: mueve la página, no la ventanita. */
 function fijarPie(){
   const vv = window.visualViewport;
   if (!vv) return;
-  document.body.style.height = Math.round(vv.height) + 'px';
-  // iOS a veces empuja la página entera para enseñar el campo: se devuelve
-  if (window.scrollTo) window.scrollTo(0, 0);
+
+  const visible = Math.round(vv.height + vv.offsetTop);
+  const pagina  = window.innerHeight || visible;
+
+  // Sin teclado (o casi): se suelta el alto y manda el 100dvh del CSS, que es
+  // el que sabe de barras de navegación que aparecen y desaparecen.
+  const tapado = pagina - visible;
+  if (!isFinite(visible) || visible < 200 || tapado < 40){
+    if (document.body.style.height) document.body.style.height = '';
+    return;
+  }
+
+  document.body.style.height = visible + 'px';
 }
+
+/* Con el teclado abierto, la fila que se está escribiendo no puede quedar
+   detrás del teclado. Se acomoda lo mínimo, sin saltos. */
+function acercarLoQueSeEscribe(){
+  const a = document.activeElement;
+  if (!a || !a.scrollIntoView) return;
+  if (a.tagName !== 'INPUT' && a.tagName !== 'SELECT') return;
+  try{ a.scrollIntoView({ block:'nearest', inline:'nearest' }); }catch(e){}
+}
+
+/* Android reporta el teclado tarde y en varios tirones: se mide unas cuantas
+   veces en el primer medio segundo en vez de confiar en un solo aviso. */
+let reintentosPie = [];
+function revisarPie(){
+  reintentosPie.forEach(clearTimeout);
+  reintentosPie = [60, 180, 350, 550].map(ms => setTimeout(() => {
+    fijarPie();
+    acercarLoQueSeEscribe();
+  }, ms));
+  fijarPie();
+}
+
+// Al girar el aparato, Android reporta medidas viejas por un instante:
+// se suelta el alto de una y se vuelve a medir cuando ya se asentó.
+window.addEventListener('orientationchange', () => {
+  document.body.style.height = '';
+  setTimeout(revisarPie, 300);
+});
+window.addEventListener('resize', fijarPie);
 
 if (window.visualViewport){
   window.visualViewport.addEventListener('resize', fijarPie);
   window.visualViewport.addEventListener('scroll', fijarPie);
 }
 // algunos navegadores tardan en reportar el teclado: se revisa al entrar y salir de un campo
-document.addEventListener('focusin', () => setTimeout(fijarPie, 60));
-document.addEventListener('focusout', () => setTimeout(fijarPie, 60));
+document.addEventListener('focusin', revisarPie);
+document.addEventListener('focusout', revisarPie);
 
 /* cerrar modal tocando el fondo */
 document.querySelectorAll('.velo').forEach(v => {
@@ -778,23 +850,48 @@ function normalizar(datos){
 
 async function iniciar(){
   pintarDados();
-  await detectarGuardado();
-  const datos = await leerGuardado();
 
-  if (normalizar(datos)){
+  // Nada de lo de aquí abajo puede tumbar el dibujado. Si el almacén del
+  // aparato falla, tarda o devuelve basura, la mesa igual tiene que salir:
+  // una tabla en blanco sin explicación es lo peor que puede pasar.
+  let recuperada = false;
+  try{
+    await detectarGuardado();
+    const datos = await leerGuardado();
+    recuperada = normalizar(datos);
+  }catch(e){
+    jugadores = [];
+    partidos = [];
+    modoGuardado = 'memoria';
+  }
+
+  if (recuperada){
     dibujar();
     avisar('Mesa recuperada');
   } else {
+    jugadores = [];
     partidos = [partidoNuevo()];
-    agregarJugador();   // la mesa arranca con uno solo: los demás se van añadiendo
+    contadorId = 1;
+    agregarJugador(false);   // la mesa arranca con uno solo: los demás se van añadiendo
     if (modoGuardado === 'memoria'){
       setTimeout(() => avisar('Este visor no deja guardar: descargá el archivo'), 700);
     }
   }
-  if (document.activeElement) document.activeElement.blur();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
 }
 
 // guarda de una si cerrás la pestaña antes de que corra el temporizador
 window.addEventListener('beforeunload', guardarAhora);
 
-iniciar();
+/* Última red: si iniciar() se cae por lo que sea, la mesa se dibuja igual.
+   Antes, un error aquí dejaba la tabla en blanco y sin ninguna señal. */
+iniciar().catch(() => {
+  try{
+    jugadores = [];
+    partidos = [partidoNuevo()];
+    contadorId = 1;
+    modoGuardado = 'memoria';
+    agregarJugador(false);
+    avisar('Arranqué de cero: este aparato no dejó leer lo guardado');
+  }catch(e){}
+});

@@ -10,7 +10,13 @@
   --rojo:#e4674a;
   --menta:#68d29b;
   --radio:10px;
+  /* La página YA es oscura. Sin esto, el "tema oscuro automático" de
+     Chrome y de Samsung Internet la vuelve a invertir y las cifras de la
+     tabla quedan del mismo color que su fondo: la tabla se ve vacía. */
+  color-scheme:dark;
 }
+
+html{color-scheme:dark}
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 
@@ -29,6 +35,7 @@ body{
      El pie ya NO es position:fixed, es el último tramo de esta columna,
      así que no hay forma de que se despegue del borde ni de que lo mueva
      el teclado. fijarPie() solo ajusta este alto cuando el teclado aparece. */
+  height:100vh;      /* respaldo: Android viejo y WebView no conocen dvh */
   height:100dvh;
   display:flex;
   flex-direction:column;
@@ -126,15 +133,31 @@ button:active{transform:translateY(1px) scale(.985)}
 .btn-fantasma:hover{color:var(--hueso);background:rgba(255,255,255,.05)}
 
 /* ====== Tabla ====== */
+/* El marco se ajusta a la tabla, no al revés. Si se estira al 100% con pocos
+   partidos, la columna del partido se traga todo el sobrante y queda un "20"
+   solo en medio de 700px. Con max-content el marco mide lo que mide la mesa
+   y se topa en el ancho de la pantalla cuando ya hay muchos partidos. */
 .marco{
   border:1px solid var(--fieltro-borde);
   border-radius:14px;overflow:hidden;
   background:rgba(0,0,0,.16);
+  width:max-content;max-width:100%;
 }
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.scroll{
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  touch-action:pan-x pan-y;              /* Android: deja arrastrar la tabla */
+  scrollbar-width:thin;scrollbar-color:rgba(224,166,60,.45) transparent;
+}
+.scroll::-webkit-scrollbar{height:7px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.scroll::-webkit-scrollbar-thumb{background:rgba(224,166,60,.45);border-radius:99px}
 
 table{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content}
 
+/* Con min-width:max-content, cualquier ancho en % dentro de la tabla se vuelve
+   una cuenta circular y Chrome la resuelve estirándola sin freno. Todos los
+   anchos de columna van en píxeles a propósito. */
 th,td{
   padding:0;text-align:center;
   border-bottom:1px solid rgba(255,255,255,.06);
@@ -148,13 +171,12 @@ thead th{
   padding:11px 12px;position:sticky;top:0;z-index:3;
 }
 thead th.col-nombre{left:0;z-index:5;text-align:left}
-thead th.col-apuesta{color:var(--oro)}
 thead th.col-total{color:var(--oro)}
 
 td.col-nombre,th.col-nombre{
   position:sticky;left:0;z-index:2;
   background:#0f2e25;text-align:left;
-  min-width:150px;max-width:190px;
+  width:170px;min-width:150px;max-width:190px;
 }
 tbody tr:nth-child(even) td.col-nombre{background:#113328}
 
@@ -164,20 +186,22 @@ tbody tr:nth-child(even) td.col-nombre{background:#113328}
   color:var(--hueso-tenue);width:15px;flex:none;
 }
 input.nombre{
-  background:transparent;border:none;color:var(--hueso);
+  background-color:transparent;border:none;color:var(--hueso);
+  -webkit-text-fill-color:var(--hueso);opacity:1;
   font-family:inherit;font-size:14.5px;font-weight:600;
   padding:13px 0;width:100%;min-width:0;outline:none;
 }
-input.nombre:focus{color:var(--oro-suave)}
+input.nombre:focus{color:var(--oro-suave);-webkit-text-fill-color:var(--oro-suave)}
 
 input.monto{
-  background:transparent;border:none;color:var(--hueso);
+  background-color:transparent;border:none;color:var(--hueso);
+  -webkit-text-fill-color:var(--hueso);opacity:1;
   font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;
   padding:13px 6px;width:78px;text-align:center;outline:none;
 }
-input.monto:focus{background:rgba(224,166,60,.13);color:var(--oro-suave)}
-input.monto.editado{color:var(--oro);font-weight:600}
-input.monto.apuesta{background:rgba(224,166,60,.06)}
+input.monto:focus{background-color:rgba(224,166,60,.13);color:var(--oro-suave);-webkit-text-fill-color:var(--oro-suave)}
+input.monto.editado{color:var(--oro);-webkit-text-fill-color:var(--oro);font-weight:600}
+input.monto{max-width:100%}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 
@@ -190,7 +214,10 @@ td.total{
 td.total.mas{color:var(--menta)}
 td.total.menos{color:var(--rojo)}
 td.total.cero{color:var(--hueso-tenue)}
-td.quitar{padding:0;width:1%;background:rgba(0,0,0,.14)}
+td.quitar, thead th:last-child, tfoot td:last-child{
+  padding:0;background:rgba(0,0,0,.14);
+  width:38px;min-width:38px;max-width:38px;
+}
 td.quitar .btn-x{display:block;width:100%;height:100%;border-radius:0}
 .btn-x{
   background:transparent;color:#5f7168;font-size:17px;line-height:1;
@@ -200,6 +227,21 @@ td.quitar .btn-x{display:block;width:100%;height:100%;border-radius:0}
 
 th .encabezado-partido{display:flex;align-items:center;justify-content:center;gap:5px}
 th .btn-x{font-size:13px;padding:2px 5px}
+
+/* La apuesta de la columna, debajo del nombre del partido */
+.apuesta-partido{
+  display:block;margin-top:5px;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px;font-weight:600;letter-spacing:.01em;text-transform:none;
+  color:var(--oro-suave);
+}
+.apuesta-partido i{
+  display:block;font-style:normal;margin-top:2px;
+  font-family:'Instrument Sans',sans-serif;
+  font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--hueso-tenue);
+}
+thead th.es-cerrado .apuesta-partido{color:#7d8f84}
 
 /* Estado de cada partido: en juego (dorado) o ya cerrado (apagado) */
 .estado-partido{
@@ -223,10 +265,10 @@ td.cerrada{background:rgba(0,0,0,.14)}
   display:block;font-family:'IBM Plex Mono',monospace;
   font-size:14px;font-weight:600;padding:13px 6px;min-width:78px;
 }
-.neto.mas{color:var(--menta)}
-.neto.menos{color:var(--rojo)}
-.neto.cero{color:var(--hueso-tenue)}
-.neto.fuera{color:#3f4f47}
+.neto.mas{color:var(--menta);-webkit-text-fill-color:var(--menta)}
+.neto.menos{color:var(--rojo);-webkit-text-fill-color:var(--rojo)}
+.neto.cero{color:var(--hueso-tenue);-webkit-text-fill-color:var(--hueso-tenue)}
+.neto.fuera{color:#3f4f47;-webkit-text-fill-color:#3f4f47}
 
 /* ====== Animación del cierre ======
    Corre una sola vez, al cerrar el partido. El destello arranca y termina
@@ -275,8 +317,8 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
   padding-right:max(14px, env(safe-area-inset-right));
 }
 .pie-interno{max-width:1240px;margin:0 auto;display:flex;gap:10px;align-items:center;justify-content:space-between}
-.resumen-pie{font-size:11.5px;color:var(--hueso-tenue);line-height:1.35}
-.resumen-pie b{color:var(--hueso);font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600}
+.resumen-pie{font-size:14px;color:var(--hueso-tenue);line-height:1.35}
+.resumen-pie b{color:var(--hueso);font-family:'IBM Plex Mono',monospace;font-size:15.5px;font-weight:600}
 .btn-finalizar{
   background:var(--oro);color:#20180a;
   font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.05em;text-transform:uppercase;
@@ -316,6 +358,7 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
   background:#103127;border:1px solid var(--fieltro-borde);
   border-radius:16px;width:100%;max-width:520px;
   padding:22px;margin:auto 0;
+  max-height:calc(100vh - 32px);
   max-height:calc(100dvh - 32px);overflow-y:auto;
   -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   box-shadow:0 22px 60px rgba(0,0,0,.55);
@@ -337,7 +380,8 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
 
 .campo{
   width:100%;background:#0a2019;border:1px solid var(--fieltro-borde);
-  color:var(--hueso);font-family:'Instrument Sans',sans-serif;font-size:16px;
+  color:var(--hueso);-webkit-text-fill-color:var(--hueso);
+  font-family:'Instrument Sans',sans-serif;font-size:16px;
   padding:12px 13px;border-radius:var(--radio);outline:none;
 }
 .campo:focus{border-color:var(--oro)}
@@ -356,7 +400,9 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   text-decoration-color:var(--oro);cursor:not-allowed;
 }
 
-.interruptor{
+/* Va con label.interruptor a propósito: `.bloque > label` pesa más que
+   `.interruptor` a secas, y el texto salía dorado y en mayúsculas. */
+.bloque > label.interruptor, .interruptor{
   display:flex;gap:12px;align-items:flex-start;cursor:pointer;
   background:#0a2019;border:1px solid var(--fieltro-borde);
   padding:14px;border-radius:var(--radio);
@@ -364,9 +410,9 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   text-transform:none;letter-spacing:normal;color:var(--hueso);font-size:14.5px;font-weight:400;
 }
 .interruptor.activo{border-color:var(--oro);background:rgba(224,166,60,.09)}
-.interruptor input{margin-top:2px;width:19px;height:19px;accent-color:var(--oro);flex:none}
-.interruptor .txt{font-size:14.5px;font-weight:600;line-height:1.35}
-.interruptor .txt small{display:block;font-weight:400;font-size:12.5px;color:var(--hueso-tenue);margin-top:3px}
+.interruptor input{margin-top:2px;width:19px;height:19px;accent-color:var(--oro);flex:none;font-size:16px}
+.interruptor .txt{font-size:14.5px;font-weight:600;line-height:1.35;color:var(--hueso);text-transform:none;letter-spacing:normal}
+.interruptor .txt small{display:block;font-weight:400;font-size:12.5px;color:var(--hueso-tenue);margin-top:3px;text-transform:none;letter-spacing:normal}
 
 .acciones{display:flex;gap:10px;margin-top:22px}
 .acciones button{flex:1;min-height:46px;font-size:15px}
@@ -413,7 +459,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   input.monto{font-size:17px;width:96px;padding:15px 7px}
   .neto{font-size:17px;min-width:96px;padding:15px 7px}
   td.total{font-size:19px;padding:0 16px}
-  td.col-nombre, th.col-nombre{min-width:175px;max-width:235px}
+  td.col-nombre, th.col-nombre{width:200px;min-width:175px;max-width:235px}
   tfoot td{font-size:15px}
   tfoot td.gran-total{font-size:17px}
   .ficha-num{font-size:11.5px;width:16px}
@@ -430,12 +476,14 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   /* encabezados y pie de la tabla */
   thead th{font-size:12px;letter-spacing:.14em;padding:14px 14px}
   .estado-partido{font-size:9.5px;margin-top:4px}
+  .apuesta-partido{font-size:13.5px;margin-top:6px}
+  .apuesta-partido i{font-size:10px}
   tfoot td{font-size:16px;padding:15px 14px}
   tfoot td.col-nombre{font-size:12px}
   tfoot td.gran-total{font-size:19px}
 
   /* nombres */
-  td.col-nombre, th.col-nombre{min-width:215px;max-width:290px}
+  td.col-nombre, th.col-nombre{width:240px;min-width:215px;max-width:290px}
   .celda-nombre{padding:0 10px 0 16px;gap:10px}
   .ficha-num{font-size:12.5px;width:18px}
   input.nombre{font-size:19px;padding:17px 0}
@@ -457,14 +505,13 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
     padding-left:max(24px, env(safe-area-inset-left));
     padding-right:max(24px, env(safe-area-inset-right));
   }
-  .resumen-pie{font-size:12.5px}
-  .resumen-pie b{font-size:14px}
+  .resumen-pie{font-size:16px}
+  .resumen-pie b{font-size:18px}
   .btn-finalizar{font-size:15px;padding:11px 20px}
 }
 
 /* --- iPad grande y horizontal: un punto más y ya no hace falta scroll --- */
 @media (min-width:1024px){
-  table{min-width:100%}
   thead th{font-size:12.5px}
   input.nombre{font-size:21px}
   input.monto{font-size:22px;width:130px}
@@ -491,13 +538,15 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
   .marco{border-radius:12px}
   thead th{padding:10px 9px;font-size:10px;letter-spacing:.1em}
-  td.col-nombre, th.col-nombre{min-width:132px;max-width:150px}
+  td.col-nombre, th.col-nombre{width:140px;min-width:132px;max-width:150px}
   .celda-nombre{padding:0 4px 0 9px;gap:5px}
   .ficha-num{width:12px;font-size:10px}
   input.monto{width:68px}
   .neto{min-width:68px;font-size:14.5px}
   td.total{padding:0 9px;font-size:14px}
   .estado-partido{font-size:8px;letter-spacing:.12em}
+  .apuesta-partido{font-size:10.5px;margin-top:4px}
+  .apuesta-partido i{font-size:8px;letter-spacing:.08em}
 
   /* pie compacto */
   .pie{
@@ -507,8 +556,8 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
     padding-right:max(12px, env(safe-area-inset-right));
   }
   .pie-interno{gap:9px}
-  .resumen-pie{font-size:10.5px;line-height:1.35}
-  .resumen-pie b{font-size:12px}
+  .resumen-pie{font-size:13px;line-height:1.35}
+  .resumen-pie b{font-size:14.5px}
   .btn-finalizar{font-size:13px;padding:10px 14px;letter-spacing:.03em}
   .aviso{bottom:calc(62px + env(safe-area-inset-bottom, 0px))}
 
@@ -517,6 +566,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .tarjeta{
     border-radius:18px 18px 0 0;border-bottom:none;
     padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    max-height:92vh;
     max-height:92dvh;
   }
   .tarjeta h2{font-size:21px}
@@ -528,9 +578,10 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .titulo{font-size:27px}
   input.monto{width:60px}
   .neto{min-width:60px;font-size:13.5px}
-  td.col-nombre, th.col-nombre{min-width:118px;max-width:132px}
+  td.col-nombre, th.col-nombre{width:124px;min-width:118px;max-width:132px}
   .btn-finalizar{font-size:13px;padding:12px 12px}
-  .resumen-pie{font-size:10.5px}
+  .resumen-pie{font-size:12px}
+  .resumen-pie b{font-size:13.5px}
 }
 
 /* --- Horizontal en celular: poca altura, todo se aprieta --- */
@@ -539,7 +590,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .titulo{font-size:26px}
   .dados{display:none}
   .velo{align-items:center;padding:10px}
-  .tarjeta{max-height:94dvh;border-radius:16px;border-bottom:1px solid var(--fieltro-borde)}
+  .tarjeta{max-height:94vh;max-height:94dvh;border-radius:16px;border-bottom:1px solid var(--fieltro-borde)}
   .bloque{margin-bottom:14px}
   .pie{
     padding-top:7px;
@@ -547,6 +598,86 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
     padding-left:max(12px, env(safe-area-inset-left));
     padding-right:max(12px, env(safe-area-inset-right));
   }
+}
+
+/* --- Tablet en vertical (768 a 899): los tamaños de iPad no caben ---
+   Un Galaxy Tab de pie mide unos 800 CSS px. Con las cifras a 20.5px solo
+   entraban dos partidos y todo lo demás quedaba fuera de pantalla. */
+@media (min-width:768px) and (max-width:899px){
+  td.col-nombre, th.col-nombre{width:200px;min-width:180px;max-width:230px}
+  input.nombre{font-size:17.5px;padding:15px 0}
+  input.monto{font-size:18px;width:100px;padding:15px 7px}
+  .neto{font-size:18px;min-width:100px;padding:15px 7px}
+  td.total{font-size:20px;padding:0 16px}
+  tfoot td{font-size:15px}
+  tfoot td.gran-total{font-size:17.5px}
+  .celda-nombre{padding:0 8px 0 13px}
+}
+
+/* --- Tablet acostada y con poca altura (Android suele dar 800x1280 -> 1280x800)
+   Ahí lo que sobra es ancho y lo que falta es alto: se recortan los espacios
+   verticales para que se vean más filas sin tocar el tamaño de las cifras. */
+@media (min-width:768px) and (max-height:820px) and (orientation:landscape){
+  header{padding:calc(18px + env(safe-area-inset-top, 0px)) 0 14px;margin-bottom:14px}
+  .titulo{font-size:clamp(28px,4.4vw,38px)}
+  .barra{margin-bottom:12px}
+  input.nombre{padding:13px 0}
+  input.monto{padding:13px 8px}
+  .neto{padding:13px 8px}
+  thead th{padding:10px 14px}
+  tfoot td{padding:11px 14px}
+  .velo{align-items:center}
+  .tarjeta{max-height:90vh;max-height:90dvh}
+}
+
+/* --- Tablet grande / escritorio: la mesa no se pega a los bordes --- */
+@media (min-width:1440px){
+  .envoltura, .pie-interno{max-width:1500px}
+  input.monto{width:140px}
+  .neto{min-width:140px}
+}
+
+/* --- Plegables y pantallas muy angostas de verdad (Galaxy Fold cerrado) --- */
+@media (max-width:320px){
+  .titulo{font-size:24px}
+  .barra .btn{padding:9px 11px;font-size:12.5px}
+  input.monto{width:54px;font-size:15px}
+  .neto{min-width:54px;font-size:13px}
+  td.col-nombre, th.col-nombre{width:110px;min-width:104px;max-width:116px}
+  .celda-nombre{padding:0 3px 0 7px;gap:4px}
+  .ficha-num{display:none}
+  .btn-finalizar{font-size:12px;padding:11px 10px}
+}
+
+/* --- Pantallas cortas de verdad: el modal tiene que caber entero ---
+   Un celular acostado con el teclado abierto deja menos de 380px de alto. */
+@media (max-height:640px){
+  .tarjeta{padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .tarjeta h2{font-size:19px;margin-bottom:4px}
+  .tarjeta .ayuda{margin-bottom:12px;font-size:12.5px}
+  .bloque{margin-bottom:13px}
+  .acciones{margin-top:15px}
+  .acciones button{min-height:44px}
+}
+
+/* --- Android en modo escritorio / zoom del sistema al 200% ---
+   Cuando el usuario agranda la letra del sistema, la app no se rompe:
+   la tabla sigue desplazándose y el pie no se come la pantalla. */
+@media (max-height:430px){
+  header{padding-top:calc(10px + env(safe-area-inset-top, 0px));padding-bottom:8px;margin-bottom:10px}
+  .dados{display:none}
+  .subtitulo{display:none}
+}
+
+/* --- Impresión: por si alguien quiere dejar la cuenta en papel --- */
+@media print{
+  html, body{height:auto;overflow:visible;background:#fff;color:#000}
+  .barra, .pie, .velo, .aviso, td.quitar, th:last-child, .dados{display:none !important}
+  .lienzo{overflow:visible}
+  .marco{border-color:#999}
+  .scroll{overflow:visible}
+  input.nombre, input.monto{color:#000;-webkit-text-fill-color:#000}
+  thead th, tfoot td, td.col-nombre{background:#eee !important;color:#000 !important}
 }
 
 /* --- Respeta a quien apaga las animaciones --- */
