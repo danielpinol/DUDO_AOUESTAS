@@ -1,8 +1,11 @@
 /* =========================================================
    DUDO — control de apuestas
    MODELO DE DATOS
-   jugadores: [{ id, nombre, apuesta, celdas:[{ monto, editado }] }]
-       celdas[p] = lo que ese jugador puso en el partido p (antes de multiplicadores)
+   jugadores: [{ id, nombre, apuesta, celdas:[{ monto, multa }] }]
+       celdas[p].monto = la apuesta de la mesa en el partido p (no se edita a mano
+                         en la tabla: sale del botón "Monto de la apuesta")
+       celdas[p].multa = el recargo que lleva SOLO ese jugador en ese partido.
+                         Se edita en la casilla. Paga monto + multa.
    partidos:  [{ cerrado, netos:{idJugador:neto}, ganadores:[id], unaFicha:[id], tres }]
        netos solo tiene algo cuando el partido ya se cerró
    Cada columna es un partido completo, con su propio ganador y sus propias cuentas.
@@ -172,17 +175,26 @@ function totalJugador(j){
    repite, que es la apuesta de la mesa, y se avisa aparte si alguien va aparte. */
 function apuestaColumna(indice){
   const cuenta = new Map();
+  let conMulta = 0;
   jugadores.forEach(j => {
     const c = j.celdas[indice];
     if (!c) return;
     const m = Number(c.monto) || 0;
     cuenta.set(m, (cuenta.get(m) || 0) + 1);
+    if ((Number(c.multa) || 0) > 0) conMulta++;
   });
-  if (!cuenta.size) return { monto:0, mixta:false };
+  if (!cuenta.size) return { monto:0, multas:0 };
 
   let comun = 0, veces = -1;
   cuenta.forEach((n, m) => { if (n > veces){ veces = n; comun = m; } });
-  return { monto: comun, mixta: cuenta.size > 1 };
+  return { monto: comun, multas: conMulta };
+}
+
+// Lo que pone ese jugador en ese partido, antes de dobles y virgos
+function loQuePone(j, indice){
+  const c = j.celdas[indice];
+  if (!c) return 0;
+  return (Number(c.monto) || 0) + (Number(c.multa) || 0);
 }
 
 // Suma vertical de una columna: la neta si está cerrado, lo apostado si sigue abierto
@@ -191,7 +203,7 @@ function sumaColumna(indice){
   if (p.cerrado){
     return jugadores.reduce((s, j) => s + (Number(p.netos[j.id]) || 0), 0);
   }
-  return jugadores.reduce((s, j) => s + (Number(j.celdas[indice].monto) || 0), 0);
+  return jugadores.reduce((s, j) => s + loQuePone(j, indice), 0);
 }
 
 // El partido en juego es el primero que siga abierto
@@ -202,7 +214,7 @@ function indiceAbierto(){
 /* ---------- alta y baja ---------- */
 function agregarJugador(enfocar){
   const apuesta = jugadores.length ? jugadores[0].apuesta : 20;
-  const celdas = partidos.map(() => ({ monto: apuesta, editado:false }));
+  const celdas = partidos.map(() => ({ monto: apuesta, multa:0 }));
   jugadores.push({ id: contadorId++, nombre: nombrePorDefecto(), apuesta: apuesta, celdas: celdas });
   dibujar();
   // Enfocar el nombre recién creado para escribirlo de una vez.
@@ -277,16 +289,16 @@ function etiqueta(j){
   return repetido ? (jugadores.indexOf(j) + 1) + ' · ' + j.nombre : j.nombre;
 }
 
-// Edición puntual de una casilla: la multa de un jugador en un partido
-function cambiarCelda(id, indice, valor){
+/* La multa de UN jugador en UN partido. No toca a nadie más: esa persona paga
+   la apuesta de la mesa más su multa. Cero es lo normal. */
+function cambiarMulta(id, indice, valor){
   const j = buscar(id);
   if (!j || !partidos[indice] || partidos[indice].cerrado) return;
   const c = j.celdas[indice];
   if (!c) return;
   const r = montoValido(valor);
   if (r.aviso) avisar(r.aviso);
-  c.monto = r.valor;
-  c.editado = true;
+  c.multa = r.valor;
   dibujar();
 }
 
@@ -310,7 +322,7 @@ function aplicarMontoGeneral(){
   }
   jugadores.forEach(j => {
     j.apuesta = monto;
-    j.celdas.forEach((c, i) => { if (!c.editado && !partidos[i].cerrado) c.monto = monto; });
+    j.celdas.forEach((c, i) => { if (!partidos[i].cerrado) c.monto = monto; });
   });
   cerrar('modalMonto');
   dibujar();
@@ -360,7 +372,7 @@ function dibujar(){
     // La apuesta de esa columna, chiquita, debajo del nombre del partido
     const a = apuestaColumna(i);
     html += '<span class="apuesta-partido">apuesta = ' + q(a.monto) +
-            (a.mixta ? '<i>hay multas</i>' : '') + '</span>';
+            (a.multas ? '<i>' + a.multas + ' con multa</i>' : '') + '</span>';
     html += '</th>';
   });
   html += '<th class="col-total">Total</th><th></th></tr></thead><tbody>';
@@ -387,9 +399,17 @@ function dibujar(){
           html += '<td class="cerrada' + chispa + '"><span class="neto ' + clase + '">' + firmado(neto) + '</span></td>';
         }
       } else {
+        // La apuesta ya está en el encabezado de la columna: repetirla en cada
+        // fila era ruido. Aquí solo va lo que cambia de una persona a otra.
         const c = j.celdas[r];
-        html += '<td><input class="monto' + (c.editado ? ' editado' : '') + '" type="number" inputmode="decimal" min="0" max="' + MONTO_MAX + '" ' +
-                'value="' + c.monto + '" onchange="cambiarCelda(' + j.id + ', ' + r + ', this.value)"></td>';
+        const multa = Number(c.multa) || 0;
+        html += '<td class="' + (r === abierto ? 'jugando' : 'abierta') +
+                (multa > 0 ? ' con-multa' : '') + '">' +
+                '<label class="celda-multa">' +
+                  '<input class="monto multa" type="number" inputmode="decimal" min="0" max="' + MONTO_MAX + '" ' +
+                  'value="' + multa + '" onchange="cambiarMulta(' + j.id + ', ' + r + ', this.value)">' +
+                  '<span class="rotulo-multa">Multa</span>' +
+                '</label></td>';
       }
     });
 
@@ -410,7 +430,7 @@ function dibujar(){
       const cuadra = Math.abs(suma) < 0.005;
       html += '<td class="' + (cuadra ? 'cuadra' : 'descuadra') + '">' + (cuadra ? 'Q0' : firmado(suma)) + '</td>';
     } else {
-      html += '<td class="en-juego">' + q(suma) + '</td>';
+      html += '<td class="en-juego' + (r === abierto ? ' jugando' : '') + '">' + q(suma) + '</td>';
     }
   });
   const granTotal = jugadores.reduce((s, j) => s + totalJugador(j), 0);
@@ -619,17 +639,23 @@ function calcularCierre(){
     return;
   }
 
-  // Lo que aporta cada quien en este partido.
-  // Cada recargo vale UNA apuesta más y se SUMAN entre ellos; no se multiplican.
-  // Con apuesta de Q20: doble = 20+20 = 40, virgo = 20+20 = 40,
-  // doble y virgo a la vez = 20+20+20 = 60. Nunca 80.
+  /* Lo que aporta cada quien en este partido.
+     Cada recargo vale UNA apuesta más y se SUMAN entre ellos; no se multiplican.
+     Con apuesta de Q20: doble = 20+20 = 40, virgo = 20+20 = 40,
+     doble y virgo a la vez = 20+20+20 = 60. Nunca 80.
+
+     La multa va aparte y se suma UNA sola vez al final: es un castigo de esa
+     persona, no una apuesta, así que no se dobla con el doble ni con el virgo.
+     Apuesta 20, multa 15, perdió doble en partido de virgo: 20+20+20+15 = 75. */
   const aporte = {};
   jugadores.forEach(j => {
     const esGanador = ganadores.includes(j.id);
     const porVirgo  = tres && !esGanador;
     const porDoble  = unaFicha.includes(j.id) && !esGanador;
     const recargos  = (porVirgo ? 1 : 0) + (porDoble ? 1 : 0);
-    aporte[j.id] = (Number(j.celdas[indice].monto) || 0) * (1 + recargos);
+    const base  = Number(j.celdas[indice].monto) || 0;
+    const multa = Number(j.celdas[indice].multa) || 0;
+    aporte[j.id] = base * (1 + recargos) + multa;
   });
 
   // el pozo lo ponen solo los perdedores
@@ -676,7 +702,7 @@ function calcularCierre(){
   if (indiceAbierto() < 0){
     if (partidos.length < MAX_PARTIDOS){
       partidos.push(partidoNuevo());
-      jugadores.forEach(j => j.celdas.push({ monto: j.apuesta, editado:false }));
+      jugadores.forEach(j => j.celdas.push({ monto: j.apuesta, multa:0 }));
     } else {
       seTopo = true;   // 30 partidos: ya no cabe otro
     }
@@ -786,9 +812,11 @@ function normalizar(datos){
     const celdas = [];
     for (let r = 0; r < partidos.length; r++){
       const c = guardadas[r];
+      // Lo guardado por una versión vieja traía { monto, editado } sin multa:
+      // el monto se respeta tal cual y la multa arranca en cero.
       celdas.push(c
-        ? { monto: montoValido(c.monto).valor, editado: !!c.editado }
-        : { monto: apuesta, editado:false });
+        ? { monto: montoValido(c.monto).valor, multa: montoValido(c.multa).valor }
+        : { monto: apuesta, multa:0 });
     }
     return { id: Number(j.id), nombre: nombre, apuesta: apuesta, celdas: celdas };
   });

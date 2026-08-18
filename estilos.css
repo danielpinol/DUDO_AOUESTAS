@@ -205,8 +205,25 @@ input.monto{
   padding:13px 6px;width:78px;text-align:center;outline:none;
 }
 input.monto:focus{background-color:rgba(224,166,60,.13);color:var(--oro-suave);-webkit-text-fill-color:var(--oro-suave)}
-input.monto.editado{color:var(--oro);-webkit-text-fill-color:var(--oro);font-weight:600}
 input.monto{max-width:100%}
+
+/* Casilla del partido abierto: arriba la multa, editable, y debajo el rótulo.
+   La apuesta no se repite aquí porque ya está en el encabezado de la columna. */
+.celda-multa{display:block;cursor:text;padding:9px 6px 7px}
+/* clamp() y no un tamaño fijo: esta regla es más específica que las de los
+   media queries de input.monto, así que si fuera fija se los comería a todos.
+   El mínimo es 17px para que iOS no acerque la pantalla al tocar el campo. */
+.celda-multa input.monto{display:block;padding:0;width:100%;font-size:clamp(17px, 2.3vw, 24px)}
+.rotulo-multa{
+  display:block;margin-top:3px;
+  font-size:clamp(9px, 1vw, 11px);
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:#5f7168;
+}
+/* Cuando de verdad hay una multa, la casilla se enciende: es plata que cambia */
+td.con-multa .celda-multa input.monto{color:var(--oro);-webkit-text-fill-color:var(--oro);font-weight:700}
+td.con-multa .rotulo-multa{color:var(--oro)}
+td.con-multa{background:rgba(224,166,60,.14)}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 
@@ -253,7 +270,23 @@ thead th.es-cerrado .apuesta-partido{color:#7d8f84}
   display:block;margin-top:3px;
   font-size:8.5px;letter-spacing:.16em;font-weight:700;
 }
-thead th.es-abierto{color:var(--oro);background:#0c2b21}
+/* =========================================================
+   LA COLUMNA EN JUEGO
+   Es la única donde se escribe, así que tiene que cantar. Lleva dos rieles
+   dorados a los costados (con inset box-shadow, que no descuadra el ancho
+   como haría un border) y un fondo más claro que el resto de la tabla.
+   ========================================================= */
+td.jugando, thead th.jugando, tfoot td.jugando{
+  background:rgba(224,166,60,.10);
+  box-shadow:inset 2px 0 0 var(--oro), inset -2px 0 0 var(--oro);
+}
+td.con-multa.jugando{background:rgba(224,166,60,.2)}
+/* el riel se cierra arriba y abajo para que la columna se lea como un bloque */
+thead th.es-abierto{box-shadow:inset 2px 0 0 var(--oro), inset -2px 0 0 var(--oro), inset 0 3px 0 var(--oro)}
+tfoot td.jugando{box-shadow:inset 2px 0 0 var(--oro), inset -2px 0 0 var(--oro), inset 0 -3px 0 var(--oro)}
+tfoot td.en-juego.jugando{color:var(--oro)}
+
+thead th.es-abierto{color:var(--oro);background:rgba(224,166,60,.13)}
 thead th.es-abierto .estado-partido{color:var(--oro)}
 thead th.es-cerrado .estado-partido{color:#5f7168}
 
