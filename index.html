@@ -28,7 +28,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
      celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
-<link rel="stylesheet" href="estilos.css?v=7">
+<link rel="stylesheet" href="estilos.css?v=9">
 </head>
 <body>
 
@@ -46,6 +46,8 @@
     <button class="btn btn-oro" onclick="agregarJugador()">+ Agregar jugador</button>
     <button class="btn" onclick="abrirMontoGeneral()">Monto de la apuesta</button>
     <button class="btn btn-fantasma" onclick="nuevaMesa()">Nueva mesa</button>
+    <span class="separador-barra" aria-hidden="true"></span>
+    <button class="btn btn-fin-noche" id="btnFinNoche" onclick="pedirFinNoche()">Fin de la noche</button>
   </div>
 
   <div class="marco">
@@ -125,8 +127,18 @@
   </div>
 </div>
 
+<!-- Resumen del final de la noche -->
+<div class="velo velo-ancho" id="modalResumen" hidden>
+  <div class="tarjeta tarjeta-resumen">
+    <div id="cuerpoResumen"></div>
+    <div class="acciones">
+      <button class="btn btn-oro" onclick="cerrar('modalResumen')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

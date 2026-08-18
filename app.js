@@ -492,7 +492,175 @@ function actualizarPie(){
   }
   document.getElementById('resumenPie').innerHTML = partes.join(' · ');
   document.getElementById('btnFinalizar').disabled = jugadores.length < 2 || abierto < 0;
+  const btnFin = document.getElementById('btnFinNoche');
+  if (btnFin) btnFin.disabled = !partidosJugados();
   guardar(); // actualizarPie corre en cada cambio, así que guardamos aquí
+}
+
+/* =========================================================
+   FIN DE LA NOCHE
+   Un resumen de todo lo que pasó: cómo quedó cada quien y qué pasó en cada
+   partido. No borra nada, la mesa queda igual: el paso de confirmar es solo
+   para que nadie lo abra de un dedazo en medio de una partida.
+   ========================================================= */
+function partidosJugados(){
+  return partidos.filter(p => p.cerrado).length;
+}
+
+function pedirFinNoche(){
+  const cuantos = partidosJugados();
+  if (!cuantos){ avisar('Todavía no hay ningún partido cerrado'); return; }
+  confirmar('Fin de la noche',
+    'Se arma el resumen de ' + cuantos + ' partido' + (cuantos === 1 ? '' : 's') +
+    ' y de cómo quedó cada quien. No se borra nada: la mesa queda igual por si van a seguir.',
+    abrirResumen);
+}
+
+// Lo que se llevaron los ganadores en un partido: el pozo que se repartió
+function pozoDe(p){
+  return jugadores.reduce((t, j) => t + Math.max(0, Number(p.netos[j.id]) || 0), 0);
+}
+
+/* Quién le paga a quién, con la menor cantidad de pagos posible.
+   Al final de la noche nadie quiere leer una tabla de netos y ponerse a
+   restar: quiere que le digan "Tavo le da Q205 a Piña" y ya.
+   Se emparejan los que más deben con los que más tienen por cobrar, y cada
+   pago cierra al menos una de las dos puntas: salen como mucho N-1 pagos. */
+function cuentasDeLaNoche(){
+  const deben  = [];
+  const cobran = [];
+  jugadores.forEach(j => {
+    const t = Math.round(totalJugador(j) * 100) / 100;
+    if (t < -0.005)      deben.push({ j: j, falta: -t });
+    else if (t > 0.005) cobran.push({ j: j, falta: t });
+  });
+  deben.sort((a, b) => b.falta - a.falta);
+  cobran.sort((a, b) => b.falta - a.falta);
+
+  const pagos = [];
+  let d = 0, c = 0, vueltas = 0;
+  // el tope de vueltas es una red por si algún redondeo raro no deja avanzar
+  while (d < deben.length && c < cobran.length && vueltas++ < 400){
+    const monto = Math.min(deben[d].falta, cobran[c].falta);
+    if (monto > 0.005) pagos.push({ de: deben[d].j, a: cobran[c].j, monto: monto });
+    deben[d].falta  -= monto;
+    cobran[c].falta -= monto;
+    if (deben[d].falta  <= 0.005) d++;
+    if (cobran[c].falta <= 0.005) c++;
+  }
+  return pagos;
+}
+
+function abrirResumen(){
+  const cerrados = partidos
+    .map((p, i) => ({ p: p, i: i }))
+    .filter(x => x.p.cerrado);
+
+  const repartido = cerrados.reduce((s, x) => s + pozoDe(x.p), 0);
+
+  const puestos = jugadores
+    .map(j => ({
+      j: j,
+      total: totalJugador(j),
+      ganados: cerrados.filter(x => x.p.ganadores.includes(j.id)).length
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const cobran = puestos.filter(x => x.total >  0.005);
+  const pagan  = puestos.filter(x => x.total < -0.005);
+  const iguales = puestos.filter(x => Math.abs(x.total) <= 0.005);
+
+  let html = '<div class="res-cabecera">' +
+    '<h2>Fin de la noche</h2>' +
+    '<p class="res-sub">' +
+      cerrados.length + ' partido' + (cerrados.length === 1 ? '' : 's') + ' jugado' + (cerrados.length === 1 ? '' : 's') +
+      ' · ' + jugadores.length + ' jugador' + (jugadores.length === 1 ? '' : 'es') +
+      ' · ' + q(repartido) + ' repartidos' +
+    '</p></div>';
+
+  /* ---------- 1. LAS CUENTAS: lo primero, porque es lo que se necesita ---------- */
+  const pagos = cuentasDeLaNoche();
+  html += '<section class="res-bloque res-cuentas">' +
+          '<h3>Quién le paga a quién</h3>';
+
+  if (!pagos.length){
+    html += '<p class="res-nada">Nadie le debe nada a nadie: la noche quedó pareja.</p>';
+  } else {
+    html += '<ul class="res-lista">';
+    pagos.forEach(pg => {
+      html += '<li class="res-pago">' +
+        '<span class="res-de">' + escapar(pg.de.nombre) + '</span>' +
+        '<span class="res-flecha" aria-hidden="true">→</span>' +
+        '<span class="res-a">' + escapar(pg.a.nombre) + '</span>' +
+        '<span class="res-monto">' + q(pg.monto) + '</span>' +
+      '</li>';
+    });
+    html += '</ul>';
+  }
+
+  // Si alguien se salió de la mesa a medias, las columnas dejan de sumar cero
+  // y estos pagos no cierran. Más vale decirlo que dar una cuenta falsa.
+  const descuadre = jugadores.reduce((s, j) => s + totalJugador(j), 0);
+  if (Math.abs(descuadre) > 0.005){
+    html += '<p class="res-alerta">Ojo: las cuentas de la mesa no dan cero (' +
+            firmado(descuadre) + '), seguramente porque alguien salió a media noche. ' +
+            'Estos pagos no van a cerrar del todo.</p>';
+  }
+  html += '</section>';
+
+  html += '<div class="res-columnas">';
+
+  /* ---------- 2. CÓMO QUEDÓ CADA QUIEN ---------- */
+  html += '<section class="res-bloque"><h3>Cómo quedó cada quien</h3>';
+
+  const grupo = (rotulo, clase, lista) => {
+    if (!lista.length) return '';
+    let t = '<p class="res-grupo ' + clase + '">' + rotulo + '</p><ul class="res-lista">';
+    lista.forEach(x => {
+      t += '<li class="res-jugador ' + clase + '">' +
+        '<span class="res-nombre">' + escapar(x.j.nombre) + '</span>' +
+        '<span class="res-ganados">' +
+          (x.ganados ? 'ganó ' + x.ganados + ' de ' + cerrados.length : 'no ganó ninguno') +
+        '</span>' +
+        '<span class="res-plata">' + firmado(x.total) + '</span>' +
+      '</li>';
+    });
+    return t + '</ul>';
+  };
+
+  html += grupo('Cobran', 'cobra', cobran);
+  html += grupo('Pagan', 'paga', pagan);
+  html += grupo('Quedaron iguales', 'igual', iguales);
+  html += '</section>';
+
+  /* ---------- 3. PARTIDO POR PARTIDO, con encabezados ---------- */
+  html += '<section class="res-bloque"><h3>Partido por partido</h3>' +
+    '<table class="res-tabla"><thead><tr>' +
+      '<th>#</th><th>Ganó</th><th>Apuesta</th><th>Pozo</th>' +
+    '</tr></thead><tbody>';
+
+  cerrados.forEach(x => {
+    const nombres = x.p.ganadores
+      .map(id => { const j = buscar(id); return j ? escapar(j.nombre) : 'ya no está'; })
+      .join(' y ');
+    let marcas = '';
+    if (x.p.tres) marcas += '<em class="res-marca virgo">virgo</em>';
+    if (x.p.unaFicha.length){
+      marcas += '<em class="res-marca doble">' + x.p.unaFicha.length + ' doble</em>';
+    }
+    html += '<tr>' +
+      '<td class="res-num">' + (x.i + 1) + '</td>' +
+      '<td class="res-gano">' + (nombres || '—') + marcas + '</td>' +
+      '<td class="res-apuesta">' + q(apuestaColumna(x.i).monto) + '</td>' +
+      '<td class="res-pozo">' + q(pozoDe(x.p)) + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></section>';
+
+  html += '</div>';
+
+  document.getElementById('cuerpoResumen').innerHTML = html;
+  abrir('modalResumen');
 }
 
 /* =========================================================
