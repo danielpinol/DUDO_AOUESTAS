@@ -823,9 +823,14 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .tarjeta h2{font-size:21px}
 }
 
-/* --- Celulares angostos tipo SE / A03 --- */
+/* --- Celulares angostos tipo Galaxy / Pixel / A03 ---
+   Ojo con el corte: casi todo Android reporta EXACTAMENTE 360px de ancho,
+   mientras que el iPhone más angosto (SE) reporta 375. Todo lo que se apague
+   aquí se apaga en Android y se queda encendido en iPhone. Los dados caben
+   de sobra a este ancho, solo hay que achicarlos un punto. */
 @media (max-width:360px){
-  .dados{display:none}
+  .dado{width:19px;height:19px;padding:2px;border-radius:4.5px}
+  .dados{gap:4px}
   .titulo{font-size:27px}
   input.monto{width:60px}
   .neto{min-width:60px;font-size:13.5px}
@@ -890,6 +895,8 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
 /* --- Plegables y pantallas muy angostas de verdad (Galaxy Fold cerrado) --- */
 @media (max-width:320px){
+  /* Aquí sí compiten por el ancho con el título: mejor que no estén. */
+  .dados{display:none}
   .titulo{font-size:24px}
   .barra .btn{padding:9px 11px;font-size:12.5px}
   input.monto{width:54px;font-size:15px}

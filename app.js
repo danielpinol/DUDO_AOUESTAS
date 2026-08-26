@@ -41,54 +41,40 @@ function partidoNuevo(){
 
 /* =========================================================
    GUARDADO
-   Usa window.storage si existe (visor de Claude) y si no
-   localStorage (cuando abrís el archivo en tu propia máquina).
+   La mesa vive en el localStorage del navegador, bajo una sola clave.
+   Cerrás la pestaña, apagás el teléfono, volvés mañana: la mesa sigue ahí.
+   Es por navegador y por dispositivo; no viaja a ningún servidor.
+
+   El único caso en que NO se puede guardar es cuando el navegador tiene el
+   almacenamiento bloqueado (modo incógnito de algunos, cookies apagadas).
+   Ahí se sigue jugando igual, pero solo mientras la pestaña esté abierta,
+   y el pie lo avisa en rojo para que nadie se lleve la sorpresa.
    ========================================================= */
 const CLAVE = 'dudo-mesa-v2';
 let temporizadorGuardado = null;
-let modoGuardado = 'memoria'; // 'claude' | 'local' | 'memoria'
+let modoGuardado = 'memoria'; // 'local' | 'memoria'
 
-/* Un almacén que no contesta no puede dejar la app colgada sin dibujar nada:
-   pasado el tope se sigue adelante como si no existiera. */
-function conTope(promesa, ms){
-  return Promise.race([
-    Promise.resolve(promesa),
-    new Promise((_, rechazar) => setTimeout(() => rechazar(new Error('tardó demasiado')), ms))
-  ]);
-}
-
-// Se prueba UNA sola vez al abrir, con una escritura real
-async function detectarGuardado(){
-  try{
-    if (window.storage && window.storage.set){
-      await conTope(window.storage.set(CLAVE + '-prueba', 'ok'), 2500);
-      try{ await window.storage.delete(CLAVE + '-prueba'); }catch(e){}
-      modoGuardado = 'claude';
-      return;
-    }
-  }catch(e){ /* no sirve, seguimos */ }
-
+// Se prueba UNA sola vez al abrir, con una escritura de verdad: preguntar si
+// localStorage "existe" no sirve, en incógnito existe y revienta al escribir.
+function detectarGuardado(){
   try{
     localStorage.setItem(CLAVE + '-prueba', 'ok');
     localStorage.removeItem(CLAVE + '-prueba');
     modoGuardado = 'local';
-    return;
-  }catch(e){ /* no sirve, seguimos */ }
-
-  modoGuardado = 'memoria'; // no hay dónde guardar, solo dura la sesión
+  }catch(e){
+    modoGuardado = 'memoria';   // no hay dónde guardar, solo dura la sesión
+  }
 }
 
-async function guardarAhora(){
+function guardarAhora(){
   if (modoGuardado === 'memoria') return;
-  const datos = JSON.stringify({ jugadores, partidos, contadorId });
   try{
-    if (modoGuardado === 'claude') await window.storage.set(CLAVE, datos);
-    else localStorage.setItem(CLAVE, datos);
+    localStorage.setItem(CLAVE, JSON.stringify({ jugadores, partidos, contadorId }));
   }catch(e){
-    // si falla, bajamos a memoria y lo avisamos en pantalla, nunca en la consola
+    // si falla (por ejemplo, disco lleno) se avisa en pantalla, nunca en la consola
     modoGuardado = 'memoria';
     actualizarPie();
-    avisar('No se pudo guardar en este visor');
+    avisar('No se pudo guardar en este navegador');
   }
 }
 
@@ -99,22 +85,18 @@ function guardar(){
   temporizadorGuardado = setTimeout(guardarAhora, 350);
 }
 
-async function leerGuardado(){
+function leerGuardado(){
+  if (modoGuardado !== 'local') return null;
   try{
-    if (modoGuardado === 'claude'){
-      const r = await conTope(window.storage.get(CLAVE), 2500);
-      return r && r.value ? JSON.parse(r.value) : null;
-    }
-    if (modoGuardado === 'local'){
-      const crudo = localStorage.getItem(CLAVE);
-      return crudo ? JSON.parse(crudo) : null;
-    }
-  }catch(e){ /* no hay nada guardado todavía */ }
-  return null;
+    const crudo = localStorage.getItem(CLAVE);
+    return crudo ? JSON.parse(crudo) : null;
+  }catch(e){
+    return null;   // no hay nada guardado todavía, o quedó ilegible
+  }
 }
 
 /* ---------- avisos y confirmación propios ----------
-   Nada de alert, confirm ni prompt: en varios visores vienen bloqueados
+   Nada de alert, confirm ni prompt: en varios navegadores vienen bloqueados
    y el botón se queda sin hacer nada. */
 let temporizadorAviso = null;
 function avisar(mensaje){
@@ -1017,9 +999,8 @@ async function iniciar(){
   // una tabla en blanco sin explicación es lo peor que puede pasar.
   let recuperada = false;
   try{
-    await detectarGuardado();
-    const datos = await leerGuardado();
-    recuperada = normalizar(datos);
+    detectarGuardado();
+    recuperada = normalizar(leerGuardado());
   }catch(e){
     jugadores = [];
     partidos = [];
@@ -1035,7 +1016,7 @@ async function iniciar(){
     contadorId = 1;
     agregarJugador(false);   // la mesa arranca con uno solo: los demás se van añadiendo
     if (modoGuardado === 'memoria'){
-      setTimeout(() => avisar('Este visor no deja guardar: descargá el archivo'), 700);
+      setTimeout(() => avisar('Este navegador no deja guardar: la mesa se pierde al cerrar'), 700);
     }
   }
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -1053,6 +1034,6 @@ iniciar().catch(() => {
     contadorId = 1;
     modoGuardado = 'memoria';
     agregarJugador(false);
-    avisar('Arranqué de cero: este aparato no dejó leer lo guardado');
+    avisar('Arranqué de cero: no se pudo leer la mesa guardada');
   }catch(e){}
 });
