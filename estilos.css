@@ -170,7 +170,7 @@ button:active{transform:translateY(1px) scale(.985)}
 .scroll::-webkit-scrollbar-track{background:transparent}
 .scroll::-webkit-scrollbar-thumb{background:rgba(224,166,60,.45);border-radius:99px}
 
-table{border-collapse:separate;border-spacing:0;width:100%;min-width:max-content}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:-webkit-max-content;min-width:max-content}
 
 /* Con min-width:max-content, cualquier ancho en % dentro de la tabla se vuelve
    una cuenta circular y Chrome la resuelve estirándola sin freno. Todos los
@@ -185,13 +185,13 @@ thead th{
   background:#0a2019;
   font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
   color:var(--hueso-tenue);
-  padding:11px 12px;position:sticky;top:0;z-index:3;
+  padding:11px 12px;position:-webkit-sticky;position:sticky;top:0;z-index:3;
 }
 thead th.col-nombre{left:0;z-index:5;text-align:left}
 thead th.col-total{color:var(--oro)}
 
 td.col-nombre,th.col-nombre{
-  position:sticky;left:0;z-index:2;
+  position:-webkit-sticky;position:sticky;left:0;z-index:2;
   background:#0f2e25;text-align:left;
   width:170px;min-width:150px;max-width:190px;
 }
