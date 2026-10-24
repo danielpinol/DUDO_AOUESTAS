@@ -158,9 +158,23 @@ button:active{transform:translateY(1px) scale(.985)}
   border:1px solid var(--fieltro-borde);
   border-radius:14px;overflow:hidden;
   background:rgba(0,0,0,.16);
-  width:max-content;max-width:100%;
+  width:-webkit-max-content;width:max-content;max-width:100%;
 }
+/* Nombres a la izquierda, quietos; partidos a la derecha, deslizables.
+   min-width:0 en la caja que se desliza: sin eso un hijo flex no se encoge
+   por debajo de su contenido y la tabla se sale de la pantalla en vez de
+   desplazarse. */
+.mesa{display:-webkit-flex;display:flex;-webkit-align-items:flex-start;align-items:flex-start}
+.fija{
+  -webkit-flex:none;flex:none;position:relative;z-index:2;
+  box-shadow:6px 0 10px -6px rgba(0,0,0,.65);   /* se nota que lo de al lado pasa por debajo */
+}
+.fija table{width:auto}
+/* Aquí no hay nada que fijar: si se quedara el sticky del encabezado, el
+   "Jugador" se pegaría arriba de la página al bajar y los partidos no. */
+.fija th, .fija td{position:static}
 .scroll{
+  -webkit-flex:1 1 auto;flex:1 1 auto;min-width:0;
   overflow-x:auto;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
   touch-action:pan-x pan-y;              /* Android: deja arrastrar la tabla */
@@ -187,11 +201,10 @@ thead th{
   color:var(--hueso-tenue);
   padding:11px 12px;position:-webkit-sticky;position:sticky;top:0;z-index:3;
 }
-thead th.col-nombre{left:0;z-index:5;text-align:left}
+thead th.col-nombre{text-align:left}
 thead th.col-total{color:var(--oro)}
 
 td.col-nombre,th.col-nombre{
-  position:-webkit-sticky;position:sticky;left:0;z-index:2;
   background:#0f2e25;text-align:left;
   width:170px;min-width:150px;max-width:190px;
 }
@@ -248,19 +261,17 @@ td.total{
 td.total.mas{color:var(--menta)}
 td.total.menos{color:var(--rojo)}
 td.total.cero{color:var(--hueso-tenue)}
-.scroll td.quitar, .scroll thead th:last-child, .scroll tfoot td:last-child{
-  padding:0;background:rgba(0,0,0,.14);
-  width:38px;min-width:38px;max-width:38px;
+/* Basurero para quitar al jugador, dentro de su casilla, a la par del nombre.
+   Siempre visible y en rojo: no hay que adivinar dónde se borra a alguien. */
+.btn-basura{
+  flex:none;display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;padding:0;border-radius:8px;
+  background:transparent;color:var(--rojo);opacity:.85;
 }
-td.quitar .btn-x{display:block;width:100%;height:100%;border-radius:0}
-.btn-x{
-  background:transparent;color:#5f7168;font-size:17px;line-height:1;
-  padding:6px 9px;border-radius:6px;
-}
-.btn-x:hover{color:var(--rojo);background:rgba(228,103,74,.12)}
+.btn-basura svg{width:18px;height:18px;fill:currentColor;display:block}
+.btn-basura:hover{opacity:1;background:rgba(228,103,74,.15)}
 
 th .encabezado-partido{display:flex;align-items:center;justify-content:center;gap:5px}
-th .btn-x{font-size:13px;padding:2px 5px}
 
 /* La apuesta de la columna, debajo del nombre del partido */
 .apuesta-partido{
@@ -308,6 +319,39 @@ thead th.es-cerrado .estado-partido{color:#5f7168}
   font-size:14px;line-height:1;padding:3px 6px;border-radius:6px;
 }
 .btn-reabrir:hover{color:var(--oro);background:rgba(224,166,60,.14)}
+
+/* Quién empieza el partido abierto: un selector en el encabezado.
+   16px a propósito: con menos, iOS acerca la pantalla al tocarlo. */
+.empieza-partido{display:block;margin-top:8px;cursor:pointer}
+.empieza-partido span{
+  display:block;margin-bottom:3px;
+  font-size:8.5px;letter-spacing:.16em;font-weight:700;color:var(--hueso-tenue);
+}
+.empieza-sel{
+  display:block;width:100%;max-width:124px;margin:0 auto;
+  background-color:#0a2019;border:1px solid var(--fieltro-borde);border-radius:7px;
+  color:var(--hueso);-webkit-text-fill-color:var(--hueso);
+  font-family:'Instrument Sans',sans-serif;font-size:16px;font-weight:600;
+  text-transform:none;letter-spacing:normal;text-overflow:ellipsis;
+  padding:5px 22px 5px 8px;outline:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%23a9b5ad'%3E%3Cpath d='M5 7 0 0h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+}
+.empieza-sel:focus{border-color:var(--oro)}
+/* todavía nadie lo escogió: se marca en rojo para que no se pase */
+.empieza-partido.falta span{color:var(--rojo)}
+.empieza-partido.falta .empieza-sel{border-color:var(--rojo);color:var(--rojo);-webkit-text-fill-color:var(--rojo)}
+/* la lista que se abre no hereda el rojo: los nombres se leen normal */
+.empieza-sel option{color:var(--hueso);-webkit-text-fill-color:var(--hueso);background:#0a2019}
+@keyframes llamado{
+  0%,100%{transform:none}
+  20%{transform:translateX(-4px)}
+  40%{transform:translateX(4px)}
+  60%{transform:translateX(-3px)}
+  80%{transform:translateX(3px)}
+}
+.empieza-partido.llamado{animation:llamado .45s ease}
 
 /* Casilla de un partido cerrado: solo lectura, el neto en verde o rojo */
 td.cerrada{background:rgba(0,0,0,.14)}
@@ -520,6 +564,28 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 .error{color:var(--rojo);font-size:13.5px;margin-top:12px;font-weight:600}
 .error:empty{display:none}
 
+/* Ventana de después del cierre: el nombre de quien empezó va grande y en
+   su propia caja, porque es lo que se viene a leer. Todo en letra de leer,
+   nada de rótulos chiquitos en mayúsculas: esto lo lee cualquiera en la mesa. */
+.empezo-caja{
+  background:rgba(224,166,60,.09);border:1px solid rgba(224,166,60,.4);
+  border-radius:var(--radio);padding:14px 16px;margin:14px 0 24px;
+}
+.empezo-rotulo{display:block;font-size:16px;color:var(--hueso);line-height:1.35}
+.empezo-nombre{
+  display:block;margin-top:4px;
+  font-family:'Anton',sans-serif;font-size:38px;line-height:1.05;
+  text-transform:uppercase;letter-spacing:.02em;color:var(--oro);
+  overflow-wrap:anywhere;
+}
+.bloque > label.pregunta-empieza{
+  font-size:18px;font-weight:700;letter-spacing:normal;text-transform:none;
+  color:var(--hueso);margin-bottom:10px;
+}
+select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;padding-bottom:14px}
+.acciones button#btnEmpieza{font-size:17px;font-weight:700;min-height:52px}
+.bloque[hidden]{display:none}
+
 /* =========================================================
    RESUMEN DEL FIN DE LA NOCHE
    Orden a propósito: primero QUIÉN LE PAGA A QUIÉN, que es lo único que se
@@ -694,10 +760,9 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   input.nombre{padding:14px 0}
   input.monto{padding:14px 6px}
   .neto{padding:14px 6px;font-size:16px}
-  .btn-x{padding:11px 6px;font-size:18px}
-  /* angosta, pero el blanco de toque sigue midiendo 44px de alto */
-  td.quitar .btn-x{min-height:44px}
-  th .btn-x{padding:5px 8px;font-size:15px}
+  /* el basurero mide 40px: se toca con el dedo sin atinarle al nombre */
+  .btn-basura{width:40px;height:40px}
+  .btn-basura svg{width:20px;height:20px}
   .btn-reabrir{padding:6px 10px;font-size:16px}
   .chip{padding:11px 16px}
   .btn{min-height:46px}
@@ -747,9 +812,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   .neto{font-size:20.5px;min-width:120px;padding:18px 8px}
   td.total{font-size:23px;padding:0 22px}
 
-  /* la × ocupa lo mínimo: lo que sobra se lo llevan los números */
-  .btn-x{font-size:18px;padding:10px 5px}
-  th .btn-x, .btn-reabrir{font-size:17px;padding:5px 9px}
+  .btn-reabrir{font-size:17px;padding:5px 9px}
 
   .pie{
     padding-top:11px;
@@ -930,7 +993,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 /* --- Impresión: por si alguien quiere dejar la cuenta en papel --- */
 @media print{
   html, body{height:auto;overflow:visible;background:#fff;color:#000}
-  .barra, .pie, .velo, .aviso, td.quitar, th:last-child, .dados{display:none !important}
+  .barra, .pie, .velo, .aviso, .btn-basura, .dados{display:none !important}
   .lienzo{overflow:visible}
   .marco{border-color:#999}
   .scroll{overflow:visible}

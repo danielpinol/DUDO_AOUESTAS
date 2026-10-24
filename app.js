@@ -6,8 +6,9 @@
                          en la tabla: sale del botón "Monto de la apuesta")
        celdas[p].multa = el recargo que lleva SOLO ese jugador en ese partido.
                          Se edita en la casilla. Paga monto + multa.
-   partidos:  [{ cerrado, netos:{idJugador:neto}, ganadores:[id], unaFicha:[id], tres }]
+   partidos:  [{ cerrado, netos:{idJugador:neto}, ganadores:[id], unaFicha:[id], tres, empezo }]
        netos solo tiene algo cuando el partido ya se cerró
+       empezo = id del jugador que arrancó ese partido (null si no lo han escogido)
    Cada columna es un partido completo, con su propio ganador y sus propias cuentas.
    ========================================================= */
 let jugadores = [];
@@ -36,7 +37,7 @@ function prefiereQuieto(){
 }
 
 function partidoNuevo(){
-  return { cerrado:false, netos:{}, ganadores:[], unaFicha:[], tres:false };
+  return { cerrado:false, netos:{}, ganadores:[], unaFicha:[], tres:false, empezo:null };
 }
 
 /* =========================================================
@@ -222,6 +223,7 @@ function quitarJugador(id){
       delete p.netos[id];
       p.ganadores = p.ganadores.filter(x => x !== id);
       p.unaFicha = p.unaFicha.filter(x => x !== id);
+      if (p.empezo === id) p.empezo = null;
     });
     dibujar();
     avisar(j.nombre + ' salió de la mesa');
@@ -244,7 +246,21 @@ function cambiarNombre(id, valor){
   const j = buscar(id);
   if (!j) return;
   j.nombre = String(valor).slice(0, MAX_NOMBRE);
+  refrescarOpcionesEmpieza();
   actualizarPie();
+}
+
+/* Mientras se escribe un nombre la tabla no se redibuja (se perdería el
+   cursor), así que los selectores de "quién empieza" se ponen al día aquí,
+   cambiando solo el texto de cada opción. Se recalculan todas porque un
+   cambio puede volver repetido (o dejar de serlo) el nombre de otro. */
+function refrescarOpcionesEmpieza(){
+  document.querySelectorAll('select.empieza-sel, #selEmpieza').forEach(sel => {
+    for (let k = 0; k < sel.options.length; k++){
+      const j = buscar(Number(sel.options[k].value));
+      if (j) sel.options[k].textContent = etiqueta(j);
+    }
+  });
 }
 
 // Al salir del campo: sin nombre no se puede jugar, así que le ponemos uno.
@@ -310,6 +326,24 @@ function aplicarMontoGeneral(){
   dibujar();
 }
 
+/* ---------- quién empieza ----------
+   A la gente se le olvida quién arrancó, y de eso depende a quién le toca.
+   El primero se escoge en el encabezado de la columna; los demás, en la
+   ventana que sale al cerrar cada partido. */
+function opcionesEmpieza(seleccionado){
+  return '<option value="">— escoger —</option>' + jugadores.map(j =>
+    '<option value="' + j.id + '"' + (j.id === seleccionado ? ' selected' : '') + '>' + escapar(etiqueta(j)) + '</option>'
+  ).join('');
+}
+
+function cambiarEmpieza(indice, valor){
+  const p = partidos[indice];
+  if (!p || p.cerrado) return;
+  const id = Number(valor) || 0;
+  p.empezo = buscar(id) ? id : null;
+  dibujar();
+}
+
 /* =========================================================
    DIBUJO DE LA TABLA
    Partido abierto: casillas editables con lo que apostó cada quien.
@@ -320,10 +354,12 @@ function dibujar(){
   // El marco mide lo que mide la tabla (width:max-content). Cuando adentro no
   // hay tabla sino un mensaje, ese ancho ya no sirve: hay que avisarle para que
   // se abra a lo ancho de la pantalla en vez de encogerse al ancho del texto.
-  const marco = cont.parentElement;
+  const marco = document.querySelector('.marco');
+  const nombres = document.getElementById('columnaNombres');
 
   if (!jugadores.length){
     if (marco) marco.classList.add('sin-mesa');
+    nombres.innerHTML = '';
     cont.innerHTML =
       '<div class="vacio">' +
         '<div class="vacio-dado" aria-hidden="true">' +
@@ -341,8 +377,10 @@ function dibujar(){
 
   const abierto = indiceAbierto();
 
+  // Dos tablas con las mismas filas: izq = solo los nombres (no se mueve),
+  // html = los partidos y el total (es la que se desliza)
+  let izq = '<table><thead><tr><th class="col-nombre">Jugador</th></tr></thead><tbody>';
   let html = '<table><thead><tr>';
-  html += '<th class="col-nombre">Jugador</th>';
   partidos.forEach((p, i) => {
     html += '<th class="col-partido ' + (p.cerrado ? 'es-cerrado' : 'es-abierto') + '">';
     html += '<span class="encabezado-partido">Partido ' + (i + 1);
@@ -355,16 +393,27 @@ function dibujar(){
     const a = apuestaColumna(i);
     html += '<span class="apuesta-partido">apuesta = ' + q(a.monto) +
             (a.multas ? '<i>' + a.multas + ' con multa</i>' : '') + '</span>';
+    if (!p.cerrado){
+      const falta = !buscar(p.empezo);
+      html += '<label class="empieza-partido' + (falta ? ' falta' : '') + '" data-empieza="' + i + '">' +
+                '<span>Empieza</span>' +
+                '<select class="empieza-sel" onchange="cambiarEmpieza(' + i + ', this.value)">' +
+                  opcionesEmpieza(p.empezo) +
+                '</select></label>';
+    }
     html += '</th>';
   });
-  html += '<th class="col-total">Total</th><th></th></tr></thead><tbody>';
+  html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
   jugadores.forEach((j, i) => {
+    izq += '<tr><td class="col-nombre"><div class="celda-nombre"><span class="ficha-num">' + (i + 1) + '</span>' +
+           '<input class="nombre" value="' + escapar(j.nombre) + '" maxlength="' + MAX_NOMBRE + '" ' +
+           'oninput="cambiarNombre(' + j.id + ', this.value)" ' +
+           'onblur="cerrarNombre(' + j.id + ')">' +
+           '<button class="btn-basura" title="Quitar jugador" aria-label="Quitar a ' + escapar(j.nombre) + '" onclick="quitarJugador(' + j.id + ')">' +
+             '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9 2.5h6l.8 1.5H20v2.2H4V4h4.2L9 2.5zM5.6 8h12.8l-1.1 13.5H6.7L5.6 8zm4 2.5v8.5h1.6v-8.5H9.6zm3.2 0v8.5h1.6v-8.5h-1.6z"/></svg>' +
+           '</button></div></td></tr>';
     html += '<tr>';
-    html += '<td class="col-nombre"><div class="celda-nombre"><span class="ficha-num">' + (i + 1) + '</span>' +
-            '<input class="nombre" value="' + escapar(j.nombre) + '" maxlength="' + MAX_NOMBRE + '" ' +
-            'oninput="cambiarNombre(' + j.id + ', this.value)" ' +
-            'onblur="cerrarNombre(' + j.id + ')"></div></td>';
 
     partidos.forEach((p, r) => {
       if (p.cerrado){
@@ -399,13 +448,12 @@ function dibujar(){
     const claseTotal = total > 0 ? 'mas' : (total < 0 ? 'menos' : 'cero');
     const pulso = destelloGanadores.includes(j.id) ? ' gano' : '';
     html += '<td class="total ' + claseTotal + pulso + '" data-jugador="' + j.id + '">' + firmado(total) + '</td>';
-    html += '<td class="quitar"><button class="btn-x" title="Quitar jugador" onclick="quitarJugador(' + j.id + ')">×</button></td>';
     html += '</tr>';
   });
 
   // Fila de sumas: en un partido cerrado tiene que dar cero; si no da cero, va en rojo
+  izq += '</tbody><tfoot><tr><td class="col-nombre">Suma</td></tr></tfoot></table>';
   html += '</tbody><tfoot><tr>';
-  html += '<td class="col-nombre">Suma</td>';
   partidos.forEach((p, r) => {
     const suma = sumaColumna(r);
     if (p.cerrado){
@@ -418,14 +466,41 @@ function dibujar(){
   const granTotal = jugadores.reduce((s, j) => s + totalJugador(j), 0);
   const cuadraTodo = Math.abs(granTotal) < 0.005;
   html += '<td class="gran-total ' + (cuadraTodo ? 'cuadra' : 'descuadra') + '">' +
-          (cuadraTodo ? 'Q0' : firmado(granTotal)) + '</td><td></td>';
+          (cuadraTodo ? 'Q0' : firmado(granTotal)) + '</td>';
   html += '</tr></tfoot></table>';
 
+  nombres.innerHTML = izq;
   cont.innerHTML = html;
+  igualarFilas();
   destelloPartido = -1;      // marcas de un solo uso
   destelloGanadores = [];
   actualizarPie();
 }
+
+/* Las dos tablas son independientes, así que cada fila de nombres tiene que
+   medir lo mismo que su fila de partidos o se desalinean (el encabezado de
+   los partidos, por ejemplo, es mucho más alto que "Jugador"). Se mide todo
+   primero y se escribe después, para no forzar el dibujado fila por fila. */
+function igualarFilas(){
+  const izq = document.querySelectorAll('#columnaNombres tr');
+  const der = document.querySelectorAll('#contenedorTabla tr');
+  if (!izq.length || izq.length !== der.length) return;
+  let i;
+  for (i = 0; i < izq.length; i++){ izq[i].style.height = ''; der[i].style.height = ''; }
+  const altos = [];
+  for (i = 0; i < izq.length; i++){
+    altos.push(Math.ceil(Math.max(izq[i].getBoundingClientRect().height, der[i].getBoundingClientRect().height)));
+  }
+  for (i = 0; i < izq.length; i++){
+    izq[i].style.height = altos[i] + 'px';
+    der[i].style.height = altos[i] + 'px';
+  }
+}
+
+// Al girar la iPad o cuando terminan de llegar las letras, los altos cambian
+window.addEventListener('resize', igualarFilas);
+window.addEventListener('orientationchange', () => setTimeout(igualarFilas, 300));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(igualarFilas);
 
 /* Los totales cuentan desde donde estaban hasta donde quedaron.
    Solo corre al cerrar un partido, no en cada tecleo. */
@@ -658,6 +733,19 @@ function abrirFinalizar(){
   const abierto = indiceAbierto();
   if (jugadores.length < 2 || abierto < 0) return;
 
+  // Sin saber quién lo empezó no se cierra: después nadie se acuerda
+  if (!buscar(partidos[abierto].empezo)){
+    avisar('Primero escogé quién empezó el partido ' + (abierto + 1) + ', arriba en la columna');
+    const casilla = document.querySelector('[data-empieza="' + abierto + '"]');
+    if (casilla){
+      casilla.scrollIntoView({ block:'nearest', inline:'center' });
+      casilla.classList.remove('llamado');
+      void casilla.offsetWidth;   // reinicia la animación si ya la tenía
+      casilla.classList.add('llamado');
+    }
+    return;
+  }
+
   indiceCerrando = abierto;
   unaFicha = [];
   document.getElementById('tituloFinal').textContent = 'Partido ' + (abierto + 1);
@@ -837,7 +925,8 @@ function calcularCierre(){
     netos: netos,
     ganadores: ganadores.slice(),
     unaFicha: unaFicha.slice(),
-    tres: tres
+    tres: tres,
+    empezo: partidos[indice].empezo
   };
 
   cerrar('modalFinal');
@@ -866,6 +955,42 @@ function calcularCierre(){
   avisar(seTopo
     ? 'Partido ' + (indice + 1) + ' cerrado · llegaste al tope de ' + MAX_PARTIDOS
     : 'Partido ' + (indice + 1) + ' cerrado');
+  abrirEmpieza(indice);
+}
+
+/* Después de cerrar: quién empezó el que acaba de pasar, para que sepan a
+   quién le toca, y quién empieza el siguiente. Es obligatorio: no tiene
+   Cancelar ni se cierra tocando el fondo. */
+function abrirEmpieza(indiceCerrado){
+  const quien = buscar(partidos[indiceCerrado].empezo);
+  document.getElementById('tituloEmpieza').textContent = 'Partido ' + (indiceCerrado + 1) + ' terminado';
+  document.getElementById('nombreEmpezo').textContent = quien ? etiqueta(quien) : '—';
+  document.getElementById('errorEmpieza').textContent = '';
+
+  // Si ya no hay partido abierto (llegaron al tope) solo se informa
+  const siguiente = indiceAbierto();
+  const bloque = document.getElementById('bloqueSiguiente');
+  bloque.hidden = siguiente < 0;
+  document.getElementById('btnEmpieza').textContent = siguiente < 0 ? 'Listo' : 'Empezar partido ' + (siguiente + 1);
+  if (siguiente >= 0){
+    document.getElementById('rotuloSiguiente').textContent = '¿Quién empieza el partido ' + (siguiente + 1) + '?';
+    document.getElementById('selEmpieza').innerHTML = opcionesEmpieza(partidos[siguiente].empezo);
+  }
+  abrir('modalEmpieza');
+}
+
+function confirmarEmpieza(){
+  const siguiente = indiceAbierto();
+  if (siguiente >= 0){
+    const id = Number(document.getElementById('selEmpieza').value) || 0;
+    if (!buscar(id)){
+      document.getElementById('errorEmpieza').textContent = 'Escogé quién empieza el partido ' + (siguiente + 1) + '.';
+      return;
+    }
+    partidos[siguiente].empezo = id;
+  }
+  cerrar('modalEmpieza');
+  dibujar();
 }
 
 /* Reabrir: las casillas vuelven a los montos apostados, queda editable
@@ -875,7 +1000,8 @@ function pedirReabrir(indice){
   confirmar('Reabrir el partido ' + (indice + 1),
     'Se borran los resultados de esa columna, las casillas vuelven a los montos apostados y el partido sale del total.',
     () => {
-      partidos[indice] = partidoNuevo();
+      // quién lo empezó no cambia por reabrirlo
+      partidos[indice] = Object.assign(partidoNuevo(), { empezo: partidos[indice].empezo });
       dibujar();
       avisar('Partido ' + (indice + 1) + ' reabierto');
     });
@@ -907,9 +1033,9 @@ if (window.ResizeObserver){
 }
 medirPie();
 
-/* cerrar modal tocando el fondo */
+/* cerrar modal tocando el fondo, menos los que son obligatorios (data-fijo) */
 document.querySelectorAll('.velo').forEach(v => {
-  v.addEventListener('click', e => { if (e.target === v) v.hidden = true; });
+  v.addEventListener('click', e => { if (e.target === v && !v.hasAttribute('data-fijo')) v.hidden = true; });
 });
 
 /* =========================================================
@@ -937,7 +1063,8 @@ function normalizar(datos){
         netos: (p && typeof p.netos === 'object' && p.netos) ? p.netos : {},
         ganadores: Array.isArray(p && p.ganadores) ? p.ganadores : [],
         unaFicha: Array.isArray(p && p.unaFicha) ? p.unaFicha : [],
-        tres: !!(p && p.tres)
+        tres: !!(p && p.tres),
+        empezo: Number(p && p.empezo) || null
       }))
     : [partidoNuevo()];
 
@@ -982,7 +1109,8 @@ function normalizar(datos){
     p.netos = limpios;
     p.ganadores = p.ganadores.map(Number).filter(x => vivos.has(x));
     p.unaFicha = p.unaFicha.map(Number).filter(x => vivos.has(x));
-    if (p.cerrado && !Object.keys(p.netos).length) Object.assign(p, partidoNuevo());
+    if (!vivos.has(p.empezo)) p.empezo = null;
+    if (p.cerrado && !Object.keys(p.netos).length) Object.assign(p, partidoNuevo(), { empezo: p.empezo });
   });
 
   // el contador nunca puede repetir un id que ya está en la mesa

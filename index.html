@@ -28,7 +28,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
      celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
-<link rel="stylesheet" href="estilos.css?v=11">
+<link rel="stylesheet" href="estilos.css?v=15">
 </head>
 <body>
 
@@ -50,8 +50,15 @@
     <button class="btn btn-fin-noche" id="btnFinNoche" onclick="pedirFinNoche()">Fin de la noche</button>
   </div>
 
+  <!-- Los nombres van en su propia tabla, FUERA de la caja que se desliza.
+       No se usa position:sticky para fijarlos: en iPad viejos (iOS 12 para
+       abajo) sticky dentro de una caja con scroll táctil no funciona y los
+       nombres se iban con la tabla. Así quedan quietos en cualquier aparato. -->
   <div class="marco">
-    <div class="scroll" id="contenedorTabla"></div>
+    <div class="mesa">
+      <div class="fija" id="columnaNombres"></div>
+      <div class="scroll" id="contenedorTabla"></div>
+    </div>
   </div>
 </div>
 </div>
@@ -115,6 +122,26 @@
   </div>
 </div>
 
+<!-- Modal: quién empezó el que pasó y quién empieza el siguiente.
+     data-fijo: no se cierra tocando el fondo, hay que escoger. -->
+<div class="velo" id="modalEmpieza" data-fijo hidden>
+  <div class="tarjeta" style="max-width:440px">
+    <h2 id="tituloEmpieza"></h2>
+    <div class="empezo-caja">
+      <span class="empezo-rotulo">Este partido lo empezó</span>
+      <span class="empezo-nombre" id="nombreEmpezo"></span>
+    </div>
+    <div class="bloque" id="bloqueSiguiente">
+      <label for="selEmpieza" class="pregunta-empieza" id="rotuloSiguiente"></label>
+      <select class="campo campo-empieza" id="selEmpieza"></select>
+    </div>
+    <div class="acciones">
+      <button class="btn btn-oro" id="btnEmpieza" onclick="confirmarEmpieza()">Confirmar</button>
+    </div>
+    <p class="error" id="errorEmpieza"></p>
+  </div>
+</div>
+
 <!-- Modal: confirmar (propio, porque confirm() del navegador viene bloqueado en visores) -->
 <div class="velo" id="modalConfirmar" hidden>
   <div class="tarjeta" style="max-width:400px">
@@ -139,6 +166,6 @@
 
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
