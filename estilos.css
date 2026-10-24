@@ -355,7 +355,24 @@ thead th.es-cerrado .estado-partido{color:#5f7168}
   60%{transform:translateX(-3px)}
   80%{transform:translateX(3px)}
 }
-.empieza-partido.llamado{animation:llamado .45s ease}
+/* Cuando tocan "Partido finalizado" sin haberlo escogido: el selector se
+   sacude y suelta tres pulsos rojos, para que el ojo vaya directo ahí.
+   El pulso es un aro aparte (un select no admite ::after, por eso la
+   envoltura) que solo anima transform y opacity: eso lo mueve la tarjeta
+   gráfica sin repintar. Animar box-shadow repinta en cada cuadro y en una
+   iPad vieja se ve trabado. */
+.sel-anillo{position:relative;display:block;max-width:124px;margin:0 auto}
+.sel-anillo::after{
+  content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;
+  border:2px solid var(--rojo);border-radius:9px;
+  opacity:0;pointer-events:none;
+}
+@keyframes anillo{
+  0%  {opacity:.9;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.18,1.55)}
+}
+.empieza-partido.llamado{animation:llamado .5s ease .15s}
+.empieza-partido.llamado .sel-anillo::after{animation:anillo .9s ease-out .15s 3}
 
 /* Casilla de un partido cerrado: solo lectura, el neto en verde o rojo */
 td.cerrada{background:rgba(0,0,0,.14)}
@@ -749,9 +766,41 @@ select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;paddi
   color:var(--hueso);font-size:14px;font-weight:600;
   padding:11px 18px;border-radius:999px;
   box-shadow:0 8px 24px rgba(0,0,0,.5);
-  animation:sube .2s ease;max-width:90vw;text-align:center;
+  animation:aviso-entra .3s cubic-bezier(.22,1,.36,1) both;text-align:center;
+  /* Con left:50% la caja solo podía medir media pantalla y partía el texto
+     en dos aunque sobrara espacio. Que mida lo que su texto, hasta el 90%. */
+  width:-webkit-max-content;width:max-content;max-width:90vw;
+  will-change:transform,opacity;   /* que lo mueva la tarjeta gráfica desde el primer cuadro */
 }
 .aviso[hidden]{display:none}
+/* El aviso se centra con translateX(-50%), así que su animación TIENE que
+   llevarlo en cada fotograma. Antes usaba "sube", que pisaba el transform:
+   salía corrido media caja a la derecha y al terminar brincaba al centro. */
+@keyframes aviso-entra{
+  from{opacity:0;transform:translateX(-50%) translateY(18px) scale(.94)}
+  to  {opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+}
+@keyframes aviso-sacude{
+  0%,100%{transform:translateX(-50%)}
+  20%{transform:translateX(-50%) translateX(-9px)}
+  40%{transform:translateX(-50%) translateX(9px)}
+  60%{transform:translateX(-50%) translateX(-5px)}
+  80%{transform:translateX(-50%) translateX(5px)}
+}
+/* Alerta: algo que hay que corregir. Rojo, con un "!" y una sacudida al llegar. */
+.aviso.alerta{
+  background:#2b1510;border:2px solid var(--rojo);border-radius:14px;
+  font-size:15.5px;line-height:1.35;text-align:left;
+  padding:13px 18px 13px 50px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6), 0 0 0 4px rgba(228,103,74,.18);
+  animation:aviso-entra .3s cubic-bezier(.22,1,.36,1) both, aviso-sacude .5s ease .3s;
+}
+.aviso.alerta::before{
+  content:'!';position:absolute;left:14px;top:50%;margin-top:-13px;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--rojo);color:#fff;
+  font-size:16px;font-weight:800;line-height:26px;text-align:center;
+}
 
 /* =========================================================
    RESPONSIVE
@@ -823,6 +872,10 @@ select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;paddi
   }
   .resumen-pie{font-size:16px}
   .resumen-pie b{font-size:18px}
+  /* en la iPad la alerta se lee desde el otro lado de la mesa */
+  .aviso{font-size:16px}
+  .aviso.alerta{font-size:18px;padding:16px 22px 16px 56px}
+  .aviso.alerta::before{left:16px;width:28px;height:28px;margin-top:-14px;line-height:28px;font-size:17px}
   .btn-finalizar{font-size:15px;padding:11px 20px}
 }
 

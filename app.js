@@ -100,12 +100,20 @@ function leerGuardado(){
    Nada de alert, confirm ni prompt: en varios navegadores vienen bloqueados
    y el botón se queda sin hacer nada. */
 let temporizadorAviso = null;
-function avisar(mensaje){
+// tipo 'alerta': en rojo, se sacude y dura más, para lo que hay que corregir
+function avisar(mensaje, tipo){
   const a = document.getElementById('aviso');
+  const alerta = tipo === 'alerta';
   a.textContent = mensaje;
+  a.className = 'aviso' + (alerta ? ' alerta' : '');
   a.hidden = false;
+  // Si el aviso ya estaba en pantalla la animación no vuelve a correr sola:
+  // se apaga, se fuerza el dibujado y se vuelve a prender.
+  a.style.animation = 'none';
+  void a.offsetWidth;
+  a.style.animation = '';
   clearTimeout(temporizadorAviso);
-  temporizadorAviso = setTimeout(() => { a.hidden = true; }, 2200);
+  temporizadorAviso = setTimeout(() => { a.hidden = true; }, alerta ? 4000 : 2200);
 }
 
 function confirmar(titulo, texto, alAceptar){
@@ -397,9 +405,9 @@ function dibujar(){
       const falta = !buscar(p.empezo);
       html += '<label class="empieza-partido' + (falta ? ' falta' : '') + '" data-empieza="' + i + '">' +
                 '<span>Empieza</span>' +
-                '<select class="empieza-sel" onchange="cambiarEmpieza(' + i + ', this.value)">' +
+                '<span class="sel-anillo"><select class="empieza-sel" onchange="cambiarEmpieza(' + i + ', this.value)">' +
                   opcionesEmpieza(p.empezo) +
-                '</select></label>';
+                '</select></span></label>';
     }
     html += '</th>';
   });
@@ -736,14 +744,9 @@ function abrirFinalizar(){
 
   // Sin saber quién lo empezó no se cierra: después nadie se acuerda
   if (!buscar(partidos[abierto].empezo)){
-    avisar('Primero escogé quién empezó el partido ' + (abierto + 1) + ', arriba en la columna');
-    const casilla = document.querySelector('[data-empieza="' + abierto + '"]');
-    if (casilla){
-      casilla.scrollIntoView({ block:'nearest', inline:'center' });
-      casilla.classList.remove('llamado');
-      void casilla.offsetWidth;   // reinicia la animación si ya la tenía
-      casilla.classList.add('llamado');
-    }
+    //  : el número no se separa de "partido" si el texto se parte en dos líneas
+    avisar('Falta escoger quién empezó el partido ' + (abierto + 1), 'alerta');
+    llamarAEmpieza(abierto);
     return;
   }
 
@@ -773,6 +776,29 @@ function abrirFinalizar(){
   sincronizarFinal();
 
   abrir('modalFinal');
+}
+
+/* Lleva la vista al selector "Empieza" de ese partido y lo hace sacudirse.
+   Nada de scrollIntoView: en iOS a veces desplaza también el body (aunque
+   tenga overflow:hidden) y descuadra la barra de abajo. Se mueven a mano
+   solo las dos cajas que sí se desplazan: la tabla y el lienzo. */
+function llamarAEmpieza(indice){
+  const casilla = document.querySelector('[data-empieza="' + indice + '"]');
+  if (!casilla) return;
+  const th = casilla.parentNode;
+  const cont = document.getElementById('contenedorTabla');
+  const x = Math.max(0, th.offsetLeft - (cont.clientWidth - th.offsetWidth) / 2);
+  if ('scrollBehavior' in document.documentElement.style) cont.scrollTo({ left:x, behavior:'smooth' });
+  else cont.scrollLeft = x;   // Safari viejo: sin deslizamiento suave, pero llega
+
+  // si bajaron mucho en una mesa larga, el encabezado quedó arriba, fuera de vista
+  const lienzo = document.querySelector('.lienzo');
+  const arriba = th.getBoundingClientRect().top - lienzo.getBoundingClientRect().top;
+  if (arriba < 0) lienzo.scrollTop += arriba - 12;
+
+  casilla.classList.remove('llamado');
+  void casilla.offsetWidth;   // reinicia la animación si ya la tenía
+  casilla.classList.add('llamado');
 }
 
 /* Un ganador no pudo haber perdido con 1 ficha: si lo eligen como ganador,
