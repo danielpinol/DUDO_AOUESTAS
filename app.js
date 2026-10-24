@@ -403,16 +403,13 @@ function dibujar(){
     }
     html += '</th>';
   });
-  html += '<th class="col-total">Total</th></tr></thead><tbody>';
+  html += '<th class="col-total">Total</th><th></th></tr></thead><tbody>';
 
   jugadores.forEach((j, i) => {
     izq += '<tr><td class="col-nombre"><div class="celda-nombre"><span class="ficha-num">' + (i + 1) + '</span>' +
            '<input class="nombre" value="' + escapar(j.nombre) + '" maxlength="' + MAX_NOMBRE + '" ' +
            'oninput="cambiarNombre(' + j.id + ', this.value)" ' +
-           'onblur="cerrarNombre(' + j.id + ')">' +
-           '<button class="btn-basura" title="Quitar jugador" aria-label="Quitar a ' + escapar(j.nombre) + '" onclick="quitarJugador(' + j.id + ')">' +
-             '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9 2.5h6l.8 1.5H20v2.2H4V4h4.2L9 2.5zM5.6 8h12.8l-1.1 13.5H6.7L5.6 8zm4 2.5v8.5h1.6v-8.5H9.6zm3.2 0v8.5h1.6v-8.5h-1.6z"/></svg>' +
-           '</button></div></td></tr>';
+           'onblur="cerrarNombre(' + j.id + ')"></div></td></tr>';
     html += '<tr>';
 
     partidos.forEach((p, r) => {
@@ -448,6 +445,10 @@ function dibujar(){
     const claseTotal = total > 0 ? 'mas' : (total < 0 ? 'menos' : 'cero');
     const pulso = destelloGanadores.includes(j.id) ? ' gano' : '';
     html += '<td class="total ' + claseTotal + pulso + '" data-jugador="' + j.id + '">' + firmado(total) + '</td>';
+    // Basurero en su propia columna, lejos del nombre, para no borrar a nadie sin querer
+    html += '<td class="quitar"><button class="btn-basura" title="Quitar jugador" aria-label="Quitar a ' + escapar(j.nombre) + '" onclick="quitarJugador(' + j.id + ')">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M9 2.5h6l.8 1.5H20v2.2H4V4h4.2L9 2.5zM5.6 8h12.8l-1.1 13.5H6.7L5.6 8zm4 2.5v8.5h1.6v-8.5H9.6zm3.2 0v8.5h1.6v-8.5h-1.6z"/></svg>' +
+            '</button></td>';
     html += '</tr>';
   });
 
@@ -466,7 +467,7 @@ function dibujar(){
   const granTotal = jugadores.reduce((s, j) => s + totalJugador(j), 0);
   const cuadraTodo = Math.abs(granTotal) < 0.005;
   html += '<td class="gran-total ' + (cuadraTodo ? 'cuadra' : 'descuadra') + '">' +
-          (cuadraTodo ? 'Q0' : firmado(granTotal)) + '</td>';
+          (cuadraTodo ? 'Q0' : firmado(granTotal)) + '</td><td></td>';
   html += '</tr></tfoot></table>';
 
   nombres.innerHTML = izq;

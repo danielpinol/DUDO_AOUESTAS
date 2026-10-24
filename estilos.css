@@ -261,11 +261,15 @@ td.total{
 td.total.mas{color:var(--menta)}
 td.total.menos{color:var(--rojo)}
 td.total.cero{color:var(--hueso-tenue)}
-/* Basurero para quitar al jugador, dentro de su casilla, a la par del nombre.
-   Siempre visible y en rojo: no hay que adivinar dónde se borra a alguien. */
+/* Última columna: el basurero para quitar al jugador. Va aparte, después del
+   total, y no a la par del nombre: ahí se apachaba sin querer al editarlo. */
+.scroll td.quitar, .scroll thead th:last-child, .scroll tfoot td:last-child{
+  padding:0;background:rgba(0,0,0,.14);
+  width:42px;min-width:42px;max-width:42px;
+}
 .btn-basura{
-  flex:none;display:flex;align-items:center;justify-content:center;
-  width:34px;height:34px;padding:0;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%;min-height:44px;padding:0;border-radius:0;
   background:transparent;color:var(--rojo);opacity:.85;
 }
 .btn-basura svg{width:18px;height:18px;fill:currentColor;display:block}
@@ -760,9 +764,6 @@ select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;paddi
   input.nombre{padding:14px 0}
   input.monto{padding:14px 6px}
   .neto{padding:14px 6px;font-size:16px}
-  /* el basurero mide 40px: se toca con el dedo sin atinarle al nombre */
-  .btn-basura{width:40px;height:40px}
-  .btn-basura svg{width:20px;height:20px}
   .btn-reabrir{padding:6px 10px;font-size:16px}
   .chip{padding:11px 16px}
   .btn{min-height:46px}
@@ -993,7 +994,7 @@ select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;paddi
 /* --- Impresión: por si alguien quiere dejar la cuenta en papel --- */
 @media print{
   html, body{height:auto;overflow:visible;background:#fff;color:#000}
-  .barra, .pie, .velo, .aviso, .btn-basura, .dados{display:none !important}
+  .barra, .pie, .velo, .aviso, td.quitar, .scroll thead th:last-child, .scroll tfoot td:last-child, .dados{display:none !important}
   .lienzo{overflow:visible}
   .marco{border-color:#999}
   .scroll{overflow:visible}
