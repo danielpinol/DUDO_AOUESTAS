@@ -262,8 +262,8 @@ function cambiarNombre(id, valor){
 
 /* Mientras se escribe un nombre la tabla no se redibuja (se perdería el
    cursor), así que lo que repite nombres fuera de la columna de jugadores se
-   pone al día aquí: las opciones de "perdió primero" y el "empieza" del
-   encabezado. Se recalculan todos porque un cambio puede volver repetido
+   pone al día aquí: las opciones de "perdió primero" y el nombre que muestra
+   su caja. Se recalculan todos porque un cambio puede volver repetido
    (o dejar de serlo) el nombre de otro. */
 function refrescarNombres(){
   document.querySelectorAll('select.perdio-sel, #perdioPrimero').forEach(sel => {
@@ -345,9 +345,11 @@ function aplicarMontoGeneral(){
    A la gente se le olvida quién sale. La regla: el primero que pierde en un
    partido empieza el siguiente (el partido 1 lo sortea la mesa). Se anota en
    el encabezado de la columna en cuanto pasa, y al cerrar el partido se
-   vuelve a preguntar, ya con lo anotado, por si nadie se acordó. */
+   vuelve a preguntar, ya con lo anotado, por si nadie se acordó. Quién
+   empieza solo se dice en la alerta del cierre: con eso arrancan y ya no
+   hace falta tenerlo a la vista durante el partido. */
 function opcionesJugadores(seleccionado){
-  return '<option value="">— escoger —</option>' + jugadores.map(j =>
+  return '<option value="">Escoger</option>' + jugadores.map(j =>
     '<option value="' + j.id + '"' + (j.id === seleccionado ? ' selected' : '') + '>' + escapar(etiqueta(j)) + '</option>'
   ).join('');
 }
@@ -358,12 +360,6 @@ function cambiarPerdio(indice, valor){
   const id = Number(valor) || 0;
   p.perdioPrimero = buscar(id) ? id : null;
   dibujar();
-}
-
-// Quién empieza ese partido: el que perdió primero en el anterior
-function quienEmpieza(indice){
-  const anterior = partidos[indice - 1];
-  return anterior ? buscar(anterior.perdioPrimero) : null;
 }
 
 function textoChoque(id){
@@ -419,18 +415,26 @@ function dibujar(){
     const a = apuestaColumna(i);
     html += '<span class="apuesta-partido">apuesta = ' + q(a.monto) +
             (a.multas ? '<i>' + a.multas + ' con multa</i>' : '') + '</span>';
-    if (!p.cerrado){
-      // el partido 1 no dice quién empieza: ese lo sortea la mesa
-      const empieza = quienEmpieza(i);
-      if (empieza){
-        html += '<span class="empieza-partido">Empieza' +
-                  '<b data-nombre-de="' + empieza.id + '">' + escapar(etiqueta(empieza)) + '</b></span>';
+    if (p.cerrado){
+      // ya cerrado queda de recuerdo: chiquito y sin caja
+      const quien = buscar(p.perdioPrimero);
+      if (quien){
+        html += '<span class="perdio-cerrado">perdió primero' +
+                  '<b data-nombre-de="' + quien.id + '">' + escapar(etiqueta(quien)) + '</b></span>';
       }
-      html += '<label class="perdio-partido">' +
-                '<span>Perdió primero</span>' +
-                '<select class="perdio-sel" onchange="cambiarPerdio(' + i + ', this.value)">' +
-                  opcionesJugadores(p.perdioPrimero) +
-                '</select></label>';
+    } else {
+      /* Quién perdió primero: una sola caja con el rótulo adentro, que se lee
+         como un campo y no como renglones sueltos. Nada de filas aparte: cada
+         renglón de más es un jugador menos en pantalla. El select va encima,
+         invisible, y es el que recibe el toque: abre la lista de siempre. */
+      const quien = buscar(p.perdioPrimero);
+      html += '<label class="perdio-caja' + (quien ? '' : ' pendiente') + '">' +
+                '<span class="perdio-rotulo">Perdió primero</span>' +
+                '<span class="perdio-valor"' + (quien ? ' data-nombre-de="' + quien.id + '"' : '') + '>' +
+                  (quien ? escapar(etiqueta(quien)) : 'Escoger') + '</span>' +
+                '<select class="perdio-sel" aria-label="Perdió primero en el partido ' + (i + 1) + '" ' +
+                  'onchange="cambiarPerdio(' + i + ', this.value)">' + opcionesJugadores(p.perdioPrimero) + '</select>' +
+              '</label>';
     }
     html += '</th>';
   });
