@@ -324,14 +324,27 @@ thead th.es-cerrado .estado-partido{color:#5f7168}
 }
 .btn-reabrir:hover{color:var(--oro);background:rgba(224,166,60,.14)}
 
-/* Quién empieza el partido abierto: un selector en el encabezado.
-   16px a propósito: con menos, iOS acerca la pantalla al tocarlo. */
-.empieza-partido{display:block;margin-top:8px;cursor:pointer}
-.empieza-partido span{
-  display:block;margin-bottom:3px;
+/* Quién empieza el partido abierto: el que perdió primero en el anterior.
+   Solo se lee; el nombre va en letra normal y no en mayúsculas. */
+.empieza-partido{
+  display:block;margin-top:8px;
   font-size:8.5px;letter-spacing:.16em;font-weight:700;color:var(--hueso-tenue);
 }
-.empieza-sel{
+.empieza-partido b{
+  display:block;max-width:124px;margin:2px auto 0;
+  font-size:14px;font-weight:700;letter-spacing:normal;text-transform:none;
+  color:var(--hueso);overflow:hidden;text-overflow:ellipsis;
+}
+
+/* Quién perdió primero: un selector en el encabezado, para anotarlo en
+   cuanto pasa. El rótulo puede partirse en dos líneas en la columna angosta
+   del celular. 16px a propósito: con menos, iOS acerca la pantalla al tocarlo. */
+.perdio-partido{display:block;margin-top:8px;cursor:pointer}
+.perdio-partido span{
+  display:block;margin-bottom:3px;white-space:normal;
+  font-size:8.5px;letter-spacing:.16em;font-weight:700;color:var(--hueso-tenue);
+}
+.perdio-sel{
   display:block;width:100%;max-width:124px;margin:0 auto;
   background-color:#0a2019;border:1px solid var(--fieltro-borde);border-radius:7px;
   color:var(--hueso);-webkit-text-fill-color:var(--hueso);
@@ -342,37 +355,8 @@ thead th.es-cerrado .estado-partido{color:#5f7168}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%23a9b5ad'%3E%3Cpath d='M5 7 0 0h10z'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 8px center;
 }
-.empieza-sel:focus{border-color:var(--oro)}
-/* todavía nadie lo escogió: se marca en rojo para que no se pase */
-.empieza-partido.falta span{color:var(--rojo)}
-.empieza-partido.falta .empieza-sel{border-color:var(--rojo);color:var(--rojo);-webkit-text-fill-color:var(--rojo)}
-/* la lista que se abre no hereda el rojo: los nombres se leen normal */
-.empieza-sel option{color:var(--hueso);-webkit-text-fill-color:var(--hueso);background:#0a2019}
-@keyframes llamado{
-  0%,100%{transform:none}
-  20%{transform:translateX(-4px)}
-  40%{transform:translateX(4px)}
-  60%{transform:translateX(-3px)}
-  80%{transform:translateX(3px)}
-}
-/* Cuando tocan "Partido finalizado" sin haberlo escogido: el selector se
-   sacude y suelta tres pulsos rojos, para que el ojo vaya directo ahí.
-   El pulso es un aro aparte (un select no admite ::after, por eso la
-   envoltura) que solo anima transform y opacity: eso lo mueve la tarjeta
-   gráfica sin repintar. Animar box-shadow repinta en cada cuadro y en una
-   iPad vieja se ve trabado. */
-.sel-anillo{position:relative;display:block;max-width:124px;margin:0 auto}
-.sel-anillo::after{
-  content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;
-  border:2px solid var(--rojo);border-radius:9px;
-  opacity:0;pointer-events:none;
-}
-@keyframes anillo{
-  0%  {opacity:.9;transform:scale(1)}
-  100%{opacity:0;transform:scale(1.18,1.55)}
-}
-.empieza-partido.llamado{animation:llamado .5s ease .15s}
-.empieza-partido.llamado .sel-anillo::after{animation:anillo .9s ease-out .15s 3}
+.perdio-sel:focus{border-color:var(--oro)}
+.perdio-sel option{color:var(--hueso);-webkit-text-fill-color:var(--hueso);background:#0a2019}
 
 /* Casilla de un partido cerrado: solo lectura, el neto en verde o rojo */
 td.cerrada{background:rgba(0,0,0,.14)}
@@ -551,6 +535,8 @@ tfoot td.en-juego{color:var(--hueso-tenue)}
 }
 .campo:focus{border-color:var(--oro)}
 select.campo:disabled{opacity:.4;cursor:not-allowed;border-color:var(--fieltro-borde)}
+/* el mismo jugador puesto de ganador y de "perdió primero": las dos en rojo */
+select.campo.choca{border-color:var(--rojo);box-shadow:0 0 0 1px var(--rojo)}
 select.campo{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23a9b5ad'%3E%3Cpath d='M6 8 0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
 input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 
@@ -585,7 +571,7 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
 .error{color:var(--rojo);font-size:13.5px;margin-top:12px;font-weight:600}
 .error:empty{display:none}
 
-/* Ventana de después del cierre: el nombre de quien empezó va grande y en
+/* Ventana de después del cierre: el nombre de quien empieza va grande y en
    su propia caja, porque es lo que se viene a leer. Todo en letra de leer,
    nada de rótulos chiquitos en mayúsculas: esto lo lee cualquiera en la mesa. */
 .empezo-caja{
@@ -599,13 +585,8 @@ input.campo[type=number]{font-family:'IBM Plex Mono',monospace}
   text-transform:uppercase;letter-spacing:.02em;color:var(--oro);
   overflow-wrap:anywhere;
 }
-.bloque > label.pregunta-empieza{
-  font-size:18px;font-weight:700;letter-spacing:normal;text-transform:none;
-  color:var(--hueso);margin-bottom:10px;
-}
-select.campo.campo-empieza{font-size:18px;font-weight:600;padding-top:14px;padding-bottom:14px}
+.empezo-porque{display:block;margin-top:6px;font-size:14px;color:var(--hueso-tenue)}
 .acciones button#btnEmpieza{font-size:17px;font-weight:700;min-height:52px}
-.bloque[hidden]{display:none}
 
 /* =========================================================
    RESUMEN DEL FIN DE LA NOCHE

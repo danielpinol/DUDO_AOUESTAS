@@ -28,7 +28,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- El ?v= sube cada vez que cambian los archivos: sin esto el navegador del
      celular sigue sirviendo la copia vieja y los cambios no aparecen. -->
-<link rel="stylesheet" href="estilos.css?v=18">
+<link rel="stylesheet" href="estilos.css?v=19">
 </head>
 <body>
 
@@ -99,13 +99,20 @@
       <select class="campo" id="ganador2"></select>
     </div>
 
+    <!-- Justo debajo del ganador: si chocan, las dos casillas en rojo quedan juntas -->
     <div class="bloque">
-      <label>2 · ¿Perdió Doble?</label>
+      <label for="perdioPrimero">2 · ¿Quién perdió primero?</label>
+      <select class="campo" id="perdioPrimero"></select>
+      <p class="nota">Empieza el siguiente partido.</p>
+    </div>
+
+    <div class="bloque">
+      <label>3 · ¿Perdió Doble?</label>
       <div class="chips" id="chipsUnaFicha"></div>
     </div>
 
     <div class="bloque">
-      <label>3 · ¿ Ganó Virgo?</label>
+      <label>4 · ¿ Ganó Virgo?</label>
       <label class="interruptor" id="envolturaTres">
         <input type="checkbox" id="tresFichas">
         <span class="txt">Ganó con 3 fichas
@@ -122,23 +129,19 @@
   </div>
 </div>
 
-<!-- Modal: quién empezó el que pasó y quién empieza el siguiente.
-     data-fijo: no se cierra tocando el fondo, hay que escoger. -->
+<!-- Modal: quién empieza el siguiente (el que perdió primero en el que pasó).
+     data-fijo: no se cierra tocando el fondo, hay que darle al botón. -->
 <div class="velo" id="modalEmpieza" data-fijo hidden>
   <div class="tarjeta" style="max-width:440px">
     <h2 id="tituloEmpieza"></h2>
     <div class="empezo-caja">
-      <span class="empezo-rotulo">Este partido lo empezó</span>
-      <span class="empezo-nombre" id="nombreEmpezo"></span>
-    </div>
-    <div class="bloque" id="bloqueSiguiente">
-      <label for="selEmpieza" class="pregunta-empieza" id="rotuloSiguiente"></label>
-      <select class="campo campo-empieza" id="selEmpieza"></select>
+      <span class="empezo-rotulo" id="rotuloEmpieza"></span>
+      <span class="empezo-nombre" id="nombreEmpieza"></span>
+      <span class="empezo-porque">porque perdió primero</span>
     </div>
     <div class="acciones">
-      <button class="btn btn-oro" id="btnEmpieza" onclick="confirmarEmpieza()">Confirmar</button>
+      <button class="btn btn-oro" id="btnEmpieza" onclick="cerrar('modalEmpieza')">Listo</button>
     </div>
-    <p class="error" id="errorEmpieza"></p>
   </div>
 </div>
 
@@ -166,6 +169,6 @@
 
 <div class="aviso" id="aviso" hidden></div>
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

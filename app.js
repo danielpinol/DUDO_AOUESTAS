@@ -6,9 +6,11 @@
                          en la tabla: sale del botón "Monto de la apuesta")
        celdas[p].multa = el recargo que lleva SOLO ese jugador en ese partido.
                          Se edita en la casilla. Paga monto + multa.
-   partidos:  [{ cerrado, netos:{idJugador:neto}, ganadores:[id], unaFicha:[id], tres, empezo }]
+   partidos:  [{ cerrado, netos:{idJugador:neto}, ganadores:[id], unaFicha:[id], tres, perdioPrimero }]
        netos solo tiene algo cuando el partido ya se cerró
-       empezo = id del jugador que arrancó ese partido (null si no lo han escogido)
+       perdioPrimero = id del primero que perdió en ese partido (null si no lo han anotado).
+                       La regla de la mesa: ese empieza el partido siguiente.
+                       El partido 1 no lo empieza nadie fijo: lo sortea la mesa.
    Cada columna es un partido completo, con su propio ganador y sus propias cuentas.
    ========================================================= */
 let jugadores = [];
@@ -37,7 +39,7 @@ function prefiereQuieto(){
 }
 
 function partidoNuevo(){
-  return { cerrado:false, netos:{}, ganadores:[], unaFicha:[], tres:false, empezo:null };
+  return { cerrado:false, netos:{}, ganadores:[], unaFicha:[], tres:false, perdioPrimero:null };
 }
 
 /* =========================================================
@@ -231,7 +233,7 @@ function quitarJugador(id){
       delete p.netos[id];
       p.ganadores = p.ganadores.filter(x => x !== id);
       p.unaFicha = p.unaFicha.filter(x => x !== id);
-      if (p.empezo === id) p.empezo = null;
+      if (p.perdioPrimero === id) p.perdioPrimero = null;
     });
     dibujar();
     avisar(j.nombre + ' salió de la mesa');
@@ -254,20 +256,25 @@ function cambiarNombre(id, valor){
   const j = buscar(id);
   if (!j) return;
   j.nombre = String(valor).slice(0, MAX_NOMBRE);
-  refrescarOpcionesEmpieza();
+  refrescarNombres();
   actualizarPie();
 }
 
 /* Mientras se escribe un nombre la tabla no se redibuja (se perdería el
-   cursor), así que los selectores de "quién empieza" se ponen al día aquí,
-   cambiando solo el texto de cada opción. Se recalculan todas porque un
-   cambio puede volver repetido (o dejar de serlo) el nombre de otro. */
-function refrescarOpcionesEmpieza(){
-  document.querySelectorAll('select.empieza-sel, #selEmpieza').forEach(sel => {
+   cursor), así que lo que repite nombres fuera de la columna de jugadores se
+   pone al día aquí: las opciones de "perdió primero" y el "empieza" del
+   encabezado. Se recalculan todos porque un cambio puede volver repetido
+   (o dejar de serlo) el nombre de otro. */
+function refrescarNombres(){
+  document.querySelectorAll('select.perdio-sel, #perdioPrimero').forEach(sel => {
     for (let k = 0; k < sel.options.length; k++){
       const j = buscar(Number(sel.options[k].value));
       if (j) sel.options[k].textContent = etiqueta(j);
     }
+  });
+  document.querySelectorAll('[data-nombre-de]').forEach(el => {
+    const j = buscar(Number(el.getAttribute('data-nombre-de')));
+    if (j) el.textContent = etiqueta(j);
   });
 }
 
@@ -334,22 +341,33 @@ function aplicarMontoGeneral(){
   dibujar();
 }
 
-/* ---------- quién empieza ----------
-   A la gente se le olvida quién arrancó, y de eso depende a quién le toca.
-   El primero se escoge en el encabezado de la columna; los demás, en la
-   ventana que sale al cerrar cada partido. */
-function opcionesEmpieza(seleccionado){
+/* ---------- perdió primero ----------
+   A la gente se le olvida quién sale. La regla: el primero que pierde en un
+   partido empieza el siguiente (el partido 1 lo sortea la mesa). Se anota en
+   el encabezado de la columna en cuanto pasa, y al cerrar el partido se
+   vuelve a preguntar, ya con lo anotado, por si nadie se acordó. */
+function opcionesJugadores(seleccionado){
   return '<option value="">— escoger —</option>' + jugadores.map(j =>
     '<option value="' + j.id + '"' + (j.id === seleccionado ? ' selected' : '') + '>' + escapar(etiqueta(j)) + '</option>'
   ).join('');
 }
 
-function cambiarEmpieza(indice, valor){
+function cambiarPerdio(indice, valor){
   const p = partidos[indice];
   if (!p || p.cerrado) return;
   const id = Number(valor) || 0;
-  p.empezo = buscar(id) ? id : null;
+  p.perdioPrimero = buscar(id) ? id : null;
   dibujar();
+}
+
+// Quién empieza ese partido: el que perdió primero en el anterior
+function quienEmpieza(indice){
+  const anterior = partidos[indice - 1];
+  return anterior ? buscar(anterior.perdioPrimero) : null;
+}
+
+function textoChoque(id){
+  return buscar(id).nombre + ' perdió primero, así que no pudo haber ganado. Cambiá el ganador o quién perdió primero.';
 }
 
 /* =========================================================
@@ -402,12 +420,17 @@ function dibujar(){
     html += '<span class="apuesta-partido">apuesta = ' + q(a.monto) +
             (a.multas ? '<i>' + a.multas + ' con multa</i>' : '') + '</span>';
     if (!p.cerrado){
-      const falta = !buscar(p.empezo);
-      html += '<label class="empieza-partido' + (falta ? ' falta' : '') + '" data-empieza="' + i + '">' +
-                '<span>Empieza</span>' +
-                '<span class="sel-anillo"><select class="empieza-sel" onchange="cambiarEmpieza(' + i + ', this.value)">' +
-                  opcionesEmpieza(p.empezo) +
-                '</select></span></label>';
+      // el partido 1 no dice quién empieza: ese lo sortea la mesa
+      const empieza = quienEmpieza(i);
+      if (empieza){
+        html += '<span class="empieza-partido">Empieza' +
+                  '<b data-nombre-de="' + empieza.id + '">' + escapar(etiqueta(empieza)) + '</b></span>';
+      }
+      html += '<label class="perdio-partido">' +
+                '<span>Perdió primero</span>' +
+                '<select class="perdio-sel" onchange="cambiarPerdio(' + i + ', this.value)">' +
+                  opcionesJugadores(p.perdioPrimero) +
+                '</select></label>';
     }
     html += '</th>';
   });
@@ -742,14 +765,6 @@ function abrirFinalizar(){
   const abierto = indiceAbierto();
   if (jugadores.length < 2 || abierto < 0) return;
 
-  // Sin saber quién lo empezó no se cierra: después nadie se acuerda
-  if (!buscar(partidos[abierto].empezo)){
-    //  : el número no se separa de "partido" si el texto se parte en dos líneas
-    avisar('Falta escoger quién empezó el partido ' + (abierto + 1), 'alerta');
-    llamarAEmpieza(abierto);
-    return;
-  }
-
   indiceCerrando = abierto;
   unaFicha = [];
   document.getElementById('tituloFinal').textContent = 'Partido ' + (abierto + 1);
@@ -767,7 +782,9 @@ function abrirFinalizar(){
   const opciones = jugadores.map(j => '<option value="' + j.id + '">' + escapar(etiqueta(j)) + '</option>').join('');
   document.getElementById('ganador1').innerHTML = '<option value="">GANADOR</option>' + opciones;
   document.getElementById('ganador2').innerHTML = '<option value="">SEGUNDO GANADOR — nadie más</option>' + opciones;
-  ['ganador1','ganador2'].forEach(idSel => {
+  // ya viene con lo que anotaron en el encabezado, si lo anotaron
+  document.getElementById('perdioPrimero').innerHTML = opcionesJugadores(partidos[abierto].perdioPrimero);
+  ['ganador1','ganador2','perdioPrimero'].forEach(idSel => {
     const sel = document.getElementById(idSel);
     sel.onchange = sincronizarFinal;
     sel.oninput = sincronizarFinal;   // por si el navegador no dispara change
@@ -778,31 +795,10 @@ function abrirFinalizar(){
   abrir('modalFinal');
 }
 
-/* Lleva la vista al selector "Empieza" de ese partido y lo hace sacudirse.
-   Nada de scrollIntoView: en iOS a veces desplaza también el body (aunque
-   tenga overflow:hidden) y descuadra la barra de abajo. Se mueven a mano
-   solo las dos cajas que sí se desplazan: la tabla y el lienzo. */
-function llamarAEmpieza(indice){
-  const casilla = document.querySelector('[data-empieza="' + indice + '"]');
-  if (!casilla) return;
-  const th = casilla.parentNode;
-  const cont = document.getElementById('contenedorTabla');
-  const x = Math.max(0, th.offsetLeft - (cont.clientWidth - th.offsetWidth) / 2);
-  if ('scrollBehavior' in document.documentElement.style) cont.scrollTo({ left:x, behavior:'smooth' });
-  else cont.scrollLeft = x;   // Safari viejo: sin deslizamiento suave, pero llega
-
-  // si bajaron mucho en una mesa larga, el encabezado quedó arriba, fuera de vista
-  const lienzo = document.querySelector('.lienzo');
-  const arriba = th.getBoundingClientRect().top - lienzo.getBoundingClientRect().top;
-  if (arriba < 0) lienzo.scrollTop += arriba - 12;
-
-  casilla.classList.remove('llamado');
-  void casilla.offsetWidth;   // reinicia la animación si ya la tenía
-  casilla.classList.add('llamado');
-}
-
 /* Un ganador no pudo haber perdido con 1 ficha: si lo eligen como ganador,
-   se le quita la marca sola y se le bloquea el chip. Tampoco se repite el ganador. */
+   se le quita la marca sola y se le bloquea el chip. Tampoco se repite el ganador.
+   Ni pudo haber perdido primero, pero eso NO se arregla solo: no se sabe cuál
+   de las dos está mal, así que se marcan las dos en rojo y que escojan. */
 function sincronizarFinal(){
   const sel2 = document.getElementById('ganador2');
   const id1 = Number(document.getElementById('ganador1').value) || 0;
@@ -832,6 +828,15 @@ function sincronizarFinal(){
   // no dejar elegir al mismo en los dos espacios
   document.querySelectorAll('#ganador2 option').forEach(o => { o.disabled = !!o.value && Number(o.value) === id1; });
   document.querySelectorAll('#ganador1 option').forEach(o => { o.disabled = !!o.value && Number(o.value) === id2; });
+
+  // Cada cambio deja viejo el error de abajo; si el choque sigue, se vuelve a poner
+  const selPerdio = document.getElementById('perdioPrimero');
+  const idPerdio = Number(selPerdio.value) || 0;
+  const choca = !!idPerdio && ganadores.includes(idPerdio);
+  selPerdio.classList.toggle('choca', choca);
+  document.getElementById('ganador1').classList.toggle('choca', choca && idPerdio === id1);
+  sel2.classList.toggle('choca', choca && idPerdio === id2);
+  document.getElementById('errorFinal').textContent = choca ? textoChoque(idPerdio) : '';
 }
 
 // Lee los selects en el momento, no confía en el estado guardado
@@ -882,18 +887,22 @@ function calcularCierre(){
 
   const id1 = Number(document.getElementById('ganador1').value) || 0;
   const id2 = Number(document.getElementById('ganador2').value) || 0;
+  const idPerdio = Number(document.getElementById('perdioPrimero').value) || 0;
   const tres = document.getElementById('tresFichas').checked;
 
   if (jugadores.length < 2){ err.textContent = 'Tiene que haber al menos dos jugadores en la mesa.'; return; }
   if (!id1){ err.textContent = 'Falta decir quién ganó.'; return; }
   if (id2 && id2 === id1){ err.textContent = 'Los dos ganadores tienen que ser distintos.'; return; }
+  // sin esto no se sabe quién empieza el siguiente, que es justo lo que se olvida
+  if (!idPerdio){ err.textContent = 'Falta decir quién perdió primero: ese empieza el siguiente.'; return; }
   // por si alguien salió de la mesa con el modal abierto
-  if (!buscar(id1) || (id2 && !buscar(id2))){
+  if (!buscar(id1) || (id2 && !buscar(id2)) || !buscar(idPerdio)){
     err.textContent = 'Ese jugador ya no está en la mesa. Cerrá esto y volvé a intentar.';
     return;
   }
   const ganadores = id2 ? [id1, id2] : [id1];
   if (ganadores.length >= jugadores.length){ err.textContent = 'Tiene que quedar al menos un perdedor.'; return; }
+  if (ganadores.includes(idPerdio)){ err.textContent = textoChoque(idPerdio); return; }
 
   // Aunque todo lo demás falle, el cálculo se niega a correr con esta combinación
   const choque = unaFicha.filter(id => ganadores.includes(id));
@@ -953,7 +962,7 @@ function calcularCierre(){
     ganadores: ganadores.slice(),
     unaFicha: unaFicha.slice(),
     tres: tres,
-    empezo: partidos[indice].empezo
+    perdioPrimero: idPerdio
   };
 
   cerrar('modalFinal');
@@ -985,39 +994,20 @@ function calcularCierre(){
   abrirEmpieza(indice);
 }
 
-/* Después de cerrar: quién empezó el que acaba de pasar, para que sepan a
-   quién le toca, y quién empieza el siguiente. Es obligatorio: no tiene
-   Cancelar ni se cierra tocando el fondo. */
+/* Después de cerrar, en grande: quién empieza el siguiente, que es lo que se
+   les olvida. No se cierra tocando el fondo: hay que darle al botón. */
 function abrirEmpieza(indiceCerrado){
-  const quien = buscar(partidos[indiceCerrado].empezo);
+  const quien = buscar(partidos[indiceCerrado].perdioPrimero);
+  // Solo si el que sigue está por jugarse. Si llegaron al tope no hay
+  // siguiente, y si cerraron uno viejo que habían reabierto, el siguiente
+  // ya se jugó.
+  const siguiente = partidos[indiceCerrado + 1];
+  if (!quien || !siguiente || siguiente.cerrado) return;
   document.getElementById('tituloEmpieza').textContent = 'Partido ' + (indiceCerrado + 1) + ' terminado';
-  document.getElementById('nombreEmpezo').textContent = quien ? etiqueta(quien) : '—';
-  document.getElementById('errorEmpieza').textContent = '';
-
-  // Si ya no hay partido abierto (llegaron al tope) solo se informa
-  const siguiente = indiceAbierto();
-  const bloque = document.getElementById('bloqueSiguiente');
-  bloque.hidden = siguiente < 0;
-  document.getElementById('btnEmpieza').textContent = siguiente < 0 ? 'Listo' : 'Empezar partido ' + (siguiente + 1);
-  if (siguiente >= 0){
-    document.getElementById('rotuloSiguiente').textContent = '¿Quién empieza el partido ' + (siguiente + 1) + '?';
-    document.getElementById('selEmpieza').innerHTML = opcionesEmpieza(partidos[siguiente].empezo);
-  }
+  document.getElementById('rotuloEmpieza').textContent = 'El partido ' + (indiceCerrado + 2) + ' lo empieza';
+  document.getElementById('nombreEmpieza').textContent = etiqueta(quien);
+  document.getElementById('btnEmpieza').textContent = 'Empezar partido ' + (indiceCerrado + 2);
   abrir('modalEmpieza');
-}
-
-function confirmarEmpieza(){
-  const siguiente = indiceAbierto();
-  if (siguiente >= 0){
-    const id = Number(document.getElementById('selEmpieza').value) || 0;
-    if (!buscar(id)){
-      document.getElementById('errorEmpieza').textContent = 'Escogé quién empieza el partido ' + (siguiente + 1) + '.';
-      return;
-    }
-    partidos[siguiente].empezo = id;
-  }
-  cerrar('modalEmpieza');
-  dibujar();
 }
 
 /* Reabrir: las casillas vuelven a los montos apostados, queda editable
@@ -1027,8 +1017,8 @@ function pedirReabrir(indice){
   confirmar('Reabrir el partido ' + (indice + 1),
     'Se borran los resultados de esa columna, las casillas vuelven a los montos apostados y el partido sale del total.',
     () => {
-      // quién lo empezó no cambia por reabrirlo
-      partidos[indice] = Object.assign(partidoNuevo(), { empezo: partidos[indice].empezo });
+      // quién perdió primero no cambia por reabrirlo
+      partidos[indice] = Object.assign(partidoNuevo(), { perdioPrimero: partidos[indice].perdioPrimero });
       dibujar();
       avisar('Partido ' + (indice + 1) + ' reabierto');
     });
@@ -1091,7 +1081,7 @@ function normalizar(datos){
         ganadores: Array.isArray(p && p.ganadores) ? p.ganadores : [],
         unaFicha: Array.isArray(p && p.unaFicha) ? p.unaFicha : [],
         tres: !!(p && p.tres),
-        empezo: Number(p && p.empezo) || null
+        perdioPrimero: Number(p && p.perdioPrimero) || null
       }))
     : [partidoNuevo()];
 
@@ -1136,8 +1126,8 @@ function normalizar(datos){
     p.netos = limpios;
     p.ganadores = p.ganadores.map(Number).filter(x => vivos.has(x));
     p.unaFicha = p.unaFicha.map(Number).filter(x => vivos.has(x));
-    if (!vivos.has(p.empezo)) p.empezo = null;
-    if (p.cerrado && !Object.keys(p.netos).length) Object.assign(p, partidoNuevo(), { empezo: p.empezo });
+    if (!vivos.has(p.perdioPrimero)) p.perdioPrimero = null;
+    if (p.cerrado && !Object.keys(p.netos).length) Object.assign(p, partidoNuevo(), { perdioPrimero: p.perdioPrimero });
   });
 
   // el contador nunca puede repetir un id que ya está en la mesa
